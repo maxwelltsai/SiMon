@@ -5,16 +5,12 @@ from fnmatch import fnmatch
 import time
 import datetime
 import sys
-import subprocess
 import shutil
 import re
 import numpy as np
 import signal
-import atexit
-import daemon
-import logging
 
-
+sim_dir = '/Users/maxwell/Works/nbody6/Ncode/run'
 
 class SimulationInstance(object):
     def __init__(self, id, name, fulldir, status, t_min = 0, t_max = 0, restarts = None):
@@ -59,7 +55,7 @@ class SimulationInstance(object):
 class Run_Manager():
 
     def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
-            mode='interactive', cwd = '/scratch/maxwell/new_run_mar/16k_pm'):
+            mode='interactive', cwd = sim_dir):
         self.selected_inst = None
         self.id_dict = None
         self.id_dict_short = None
@@ -75,7 +71,7 @@ class Run_Manager():
         self.mode = mode
         self.cwd = cwd
         self.inst_id = 0
-        self.tcrit = 10000
+        self.tcrit = 100
         os.chdir(cwd)
 
 
@@ -358,10 +354,10 @@ class Run_Manager():
 
     def inst_restart(self):
         restart_script_template = """touch 'start_time'
-        export OMP_NUM_THREADS=8
+        export OMP_NUM_THREADS=2
         export GPU_LIST="%d"
         rm fort.* OUT* ESC COLL COAL data.h5part
-        %snbody6tt_%s.gpu < input 1>output.log 2>output.err &
+        ../../nbody6 < input 1>output.log 2>output.err &
         echo $! > process.pid
         """
 
