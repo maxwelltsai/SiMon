@@ -10,8 +10,20 @@ import re
 import numpy as np
 import signal
 
+
+"""
+Global configurations
+#TODO: move the configuration to a text file called 'SiMon.conf'. Parse the config file with regex.
+"""
 sim_dir = '/Users/maxwell/Works/nbody6/Ncode/run'
 
+"""
+A simulation instance is a single simulation task which the user requests to finish.
+It is associated with 1) a set of initial conditions specified in the input file,
+2) a (bash) script to start up the code, 3) the status of the simulation (RUN/STOP/model time,
+start timestamp, last output timestamp, parent simulation ID if it is a restart, etc),
+and 4) the ending time of the simulation.
+"""
 class SimulationInstance(object):
     def __init__(self, id, name, fulldir, status, t_min = 0, t_max = 0, restarts = None):
         self.id = id
@@ -34,7 +46,14 @@ class SimulationInstance(object):
         else:
             self.restarts = restarts # children
 
+    """
+    Traverse the directory structure.
 
+    A hierarchical directory structure may form for a simulation that has been started for multiple times.
+    For instance, a simulation is running on the directory '/sim1'. It crashes at T=120. So SiMon
+    restarts it by creating a restart directory '/sim1/restart1'. 'restart1' runs until T=200, and then
+    again crashes. So SiMon creates '/sim1/restart1/restart1' in attempt to start from T=200.
+    """
     def __repr__(self, level=0):
         placeholder_dash = "|---"+'-'*(level*4)
         placeholder_space = "    "+' '*(level*4)
@@ -51,7 +70,9 @@ class SimulationInstance(object):
 
 
 
-
+"""
+The Implementation of SiMon.
+"""
 class Run_Manager():
 
     def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
@@ -78,7 +99,9 @@ class Run_Manager():
 
 
 
-
+    """
+    Prompt to the user to input the simulation ID.
+    """
     def id_input(self, prompt):
         confirmed = False
         while confirmed == False:
@@ -88,7 +111,10 @@ class Run_Manager():
                 return ids
 
 
-
+    """
+    Traverse the simulation file structure tree, until the leaf (i.e. no restart directory) or
+    the simulation is not restartable (directory with the 'STOP' file).
+    """
     def traverse_dir(self):
         id_dict = dict()
         id_dict_short = dict()
@@ -114,6 +140,10 @@ class Run_Manager():
         return id_dict, id_dict_short
 
 
+    """
+    Traverse the simulation file structure tree, until the leaf (i.e. no restart directory) or
+    the simulation is not restartable (directory with the 'STOP' file).
+    """
     def traverse_dir2(self, pattern, dir, files):
         for filename in sorted(files):
             if fnmatch(filename, pattern):
@@ -179,7 +209,10 @@ class Run_Manager():
                         self.sim_inst_parent_dict[dir].t_max_extended = sim_inst.t_max_extended
 
 
-
+    """
+    Generate the simulation tree data structure, so that a restarted simulation can trace back
+    to its ansestor.
+    """
     def gen_instance_list(self):
         os.chdir(self.cwd)
         self.id_dict = dict()
@@ -220,7 +253,9 @@ class Run_Manager():
 
 
 
-
+    """
+    Output an overview of the simulation status in the terminal.
+    """
     def get_sim_status(self, sim_dir):
         t_list = []
         try:
@@ -241,7 +276,9 @@ class Run_Manager():
         else:
             return 0, 0
 
-
+    """
+    Prompt a menu to allow the user to select a task.
+    """
     def task_selector(self):
         opt = ''
         while opt.lower() not in ['l', 's', 'n', 'r', 'c', 'x', 'd', 'k', 'b', 'p', 'q']:
@@ -253,7 +290,9 @@ class Run_Manager():
 
 
 
-
+    """
+    Handles the task selection input from the user.
+    """
     def task_handler(self, opt):
 
         if opt == 'q':
@@ -314,7 +353,9 @@ class Run_Manager():
                 self.convert_out3_to_hdf5(int(inst_id))
 
 
-
+    """
+    Start a new NBODY6 simulation.
+    """
     def inst_start_new(self):
 
         for s in self.selected_inst:
@@ -352,6 +393,9 @@ class Run_Manager():
         # reset the selected instance
         self.selected_inst = None
 
+    """
+    Restart an NBODY6 Simulation.
+    """
     def inst_restart(self):
         restart_script_template = """touch 'start_time'
         export OMP_NUM_THREADS=2
@@ -423,6 +467,10 @@ class Run_Manager():
         # reset the selected instance
         self.selected_inst = None
 
+
+    """
+    Check the status of the current simulation instance.
+    """
     def inst_check(self):
 
         for c in self.selected_inst:
@@ -448,6 +496,9 @@ class Run_Manager():
             os.chdir(original_dir)
 
 
+    """
+    Allow the user to execute a UNIX command in the directory of the currently active simulation instance.
+    """
     def inst_exec(self, cmd=None):
         if cmd == None:
             cmd = raw_input('CMD>> ')
@@ -460,6 +511,9 @@ class Run_Manager():
             sys.stdout.write('========== [DONE] Command on #%d ==> %s (PWD=%s) ==========\n' % (e, self.id_dict[e], self.id_dict[e]))
             os.chdir(original_dir)
 
+    """
+    Delete a simulation directory with all its data, including all the subdirectory created through restarting.
+    """
     def inst_delete(self):
 
         for d in self.selected_inst:
@@ -483,6 +537,9 @@ class Run_Manager():
         # reset the selected instance
         self.selected_inst = None
 
+    """
+    Kill the UNIX process of a simulation.
+    """
     def inst_kill(self):
 
         for k in self.selected_inst:
@@ -514,6 +571,15 @@ class Run_Manager():
         # reset the selected instance
         self.selected_inst = None
 
+    """
+    Backup the simulation data files and restart files.
+
+    Sometimes, a code crashes during the output of its data file, corrupting the output/restart file.
+    The consequence of this corruption is fatal, because this makes it impossible to read the data even
+    after the simulation finishes, and/or making it impossibe to restart the simulation when it crashes.
+
+    SiMon peroidically backs up those important files.
+    """
     def inst_backup(self):
 
         for b in self.selected_inst:
@@ -539,6 +605,10 @@ class Run_Manager():
                 sys.stdout.write('Restart file is already the latest. \n')
             os.chdir(original_dir)
 
+
+    """
+    Convert the NBODY6 OUT3 data file to HDF5 file.
+    """
     def convert_out3_to_hdf5(self, inst_id):
         inst = self.sim_inst_dict[inst_id]
         original_path = os.getcwd()
@@ -569,7 +639,14 @@ class Run_Manager():
         os.chdir(original_path)
 
 
+    """
+    Check if a simulation is hung.
 
+    Sometimes, due to numerical difficulties (e.g. numerical singularity), the code
+    becomes so slow that it does not make any progress for a long period of time.
+    In such case, it is important to identify this behavior, kill the code, modify the
+    time step parameters accordingly and then restart the code.
+    """
     def check_instance_hanged(self, inst_id):
         hanged = False
         inst_dir = self.id_dict[inst_id]
@@ -603,6 +680,9 @@ class Run_Manager():
 
         return hanged
 
+    """
+    Check the error type of an NBODY6 simulation from the tail of NBODY6 output.
+    """
     def check_instance_error_type(self, inst_id):
         errortype = ''
         inst_dir = self.id_dict[inst_id]
@@ -642,7 +722,9 @@ class Run_Manager():
 
         return errortype
 
-
+    """
+    Restart the NBODY6 simulation according to the error type.
+    """
     def smart_restart(self, errortype):
         restart_file_text = ''
         if errortype == 'SMALL STEP':
@@ -653,7 +735,9 @@ class Run_Manager():
             restart_file_text = '4 10000000.0\n0.02 0.02 0.02 0.0 0.0 0\n30000 0 0\n30000 0 0'
         return restart_file_text
 
-
+    """
+    The entry point of this script if it is run directory (i.e. without a daemon).
+    """
     def main(self):
         os.chdir(self.cwd)
         self.gen_instance_list()
@@ -662,7 +746,9 @@ class Run_Manager():
             choice = self.task_selector()
             self.task_handler(choice)
 
-
+    """
+    The entry point of this script if it is run with the daemon.
+    """
     def run(self):
         os.chdir(self.cwd)
         self.gen_instance_list()
@@ -673,7 +759,14 @@ class Run_Manager():
             sys.stderr.flush()
             time.sleep(300)
 
+    """
+    The automatic decision maker for the daemon.
 
+    The daemon invokes this method at a fixed period of time. This method checks the
+    status of all simulations by traversing to all simulation directories and parsing the
+    output files. It subsequently deals with the simulation instance according to the informtion
+    gathered.
+    """
     def auto_scheduler(self):
         os.chdir(self.cwd)
         self.gen_instance_list()
