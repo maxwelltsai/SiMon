@@ -1,12 +1,3 @@
-"""
-Traverse the directory structure:
-A hierarchical directory structure may form for a simulation that has been started for multiple times.
-For instance, a simulation is running on the directory '/sim1'. It crashes at T=120. So SiMon
-restarts it by creating a restart directory '/sim1/restart1'. 'restart1' runs until T=200, and then
-again crashes. So SiMon creates '/sim1/restart1/restart1' in attempt to start from T=200.
-
-"""
-
 import datetime
 
 
@@ -18,17 +9,32 @@ class SimulationInstance(object):
     start timestamp, last output timestamp, parent simulation ID if it is a restart, etc),
     and 4) the ending time of the simulation.
 
-    Parameters
-    ----------
-    name : string
-        Usually the name of the simulation directory.
-    fulldir : string
-        The full path of the simulation directory.
-    status : string
-        RUN, STOP, RESTARTED
+    Notes
+    -----
+    Traverse the directory structure:
+    A hierarchical directory structure may form for a simulation that has been started for multiple times.
+    For instance, a simulation is running on the directory '/sim1'. It crashes at T=120. So SiMon
+    restarts it by creating a restart directory '/sim1/restart1'. 'restart1' runs until T=200, and then
+    again crashes. So SiMon creates '/sim1/restart1/restart1' in attempt to start from T=200.
+
     """
 
-    def __init__(self, id, name, fulldir, status, t_min = 0, t_max = 0, restarts = None):
+    def __init__(self, id, name, fulldir, status, t_min=0, t_max=0, restarts=None):
+        """
+        :param id:
+
+        :param name: Usually the name of the simulation directory.
+        :type name: basestring
+
+        :param fulldir: The full path of the simulation directory.
+
+        :param status: RUN, STOP, RESTARTED
+
+        :param t_min: default as 0
+        :param t_max: default as 0
+        :param restarts: default as None
+        :return:
+        """
         self.id = id
         self.name = name
         self.fulldir = fulldir
@@ -51,7 +57,6 @@ class SimulationInstance(object):
 
     def __repr__(self, level=0):
         """
-
         :param level: traverse level
         :return:
         """

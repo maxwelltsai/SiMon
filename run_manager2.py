@@ -16,7 +16,6 @@ sim_dir = '/Users/penny/Works/simon_project/nbody6/Ncode/run'  # Global configur
 
 
 class Run_Manager():
-
     def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
             mode='interactive', cwd = sim_dir):
         self.selected_inst = None
@@ -212,123 +211,6 @@ class Run_Manager():
             return np.min(t_list), np.max(t_list)
         else:
             return 0, 0
-
-    """
-    Prompt a menu to allow the user to select a task.
-    """
-    def task_selector(self):
-        opt = ''
-        while opt.lower() not in ['l', 's', 'n', 'r', 'c', 'x', 'd', 'k', 'b', 'p', 'q']:
-            sys.stdout.write('\n=======================================\n')
-            sys.stdout.write('\tList Instances (L), \n\tSelect Instance (S), \n\tNew Run (N), \n\tRestart (R), \n\tCheck status (C), \n\tExecute (X), \n\tDelete Instance (D), \n\tKill Instance (K), \n\tBackup Restart File (B), \n\tPost Processing (P), \n\tQuit (Q): \n')
-            opt = raw_input('\nPlease choose an action to continue: ').lower()
-
-        return  opt
-
-
-
-    """
-    Handles the task selection input from the user.
-    """
-    def task_handler(self, opt):
-
-        if opt == 'q':
-            sys.exit(0)
-        elif opt == 'l':
-            self.gen_instance_list()
-        elif opt == 's':
-            self.selected_inst = self.id_input('Please specify a list of IDs: ')
-            sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
-        elif opt == 'n':
-            if self.mode == 'interactive':
-                if self.selected_inst == None or len(self.selected_inst)==0:
-                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
-                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
-            self.inst_start_new()
-        elif opt == 'r':
-            if self.mode == 'interactive':
-                if self.selected_inst == None or len(self.selected_inst)==0:
-                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
-                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
-            self.inst_restart()
-        elif opt == 'c':
-            if self.mode == 'interactive':
-                if self.selected_inst == None or len(self.selected_inst)==0:
-                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
-                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
-            self.inst_check()
-        elif opt == 'x':
-            if self.mode == 'interactive':
-                if self.selected_inst == None or len(self.selected_inst)==0:
-                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
-                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
-            self.inst_exec()
-        elif opt == 'd':
-            if self.mode == 'interactive':
-                if self.selected_inst == None or len(self.selected_inst)==0:
-                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
-                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
-            self.inst_delete()
-        elif opt == 'k':
-            if self.mode == 'interactive':
-                if self.selected_inst == None or len(self.selected_inst)==0:
-                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
-                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
-            self.inst_kill()
-        elif opt == 'b':
-            if self.mode == 'interactive':
-                if self.selected_inst == None or len(self.selected_inst)==0:
-                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
-                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
-            self.inst_backup()
-        elif opt == 'p':
-            if self.mode == 'interactive':
-                if self.selected_inst == None or len(self.selected_inst)==0:
-                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
-                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
-            for inst_id in self.selected_inst:
-                self.convert_out3_to_hdf5(int(inst_id))
-
-
-    """
-    Start a new NBODY6 simulation.
-    """
-    def inst_start_new(self):
-
-        for s in self.selected_inst:
-            s = int(s)
-            sys.stdout.write("Starting #%d ==> %s\n" % (s, self.id_dict[s]))
-            if os.path.isfile(os.path.join(self.id_dict[s], 'process.pid')):
-                try:
-                    fpid = open(os.path.join(self.id_dict[s], 'process.pid'), 'r')
-                    pid = 0
-                    pid = int(fpid.readline())
-                    fpid.close()
-                    if pid > 0:
-                        os.kill(pid, 0) # test if process exist
-                        sys.stdout.write('WARNING: the instance is already running. Will not start new run.\n')
-                        return
-                except (ValueError,OSError), e:
-                    # the instance is not running, can restart
-                    os.chdir(self.id_dict[s])
-                    # scan and remove any previous restarting dirs
-                    restart_dir = sorted(glob.glob('restart*/'))
-                    for r_dir in restart_dir:
-                        shutil.rmtree(r_dir)
-                    #proc = subprocess.Popen(['/bin/sh', self.id_dict[s]])
-                    os.system('sh run.sh')
-                    os.chdir('..')
-            else:
-                os.chdir(self.id_dict[s])
-                # scan and remove any previous restarting dirs
-                restart_dir = sorted(glob.glob('restart*/'))
-                for r_dir in restart_dir:
-                    shutil.rmtree(r_dir)
-                #proc = subprocess.Popen(['/bin/sh', self.id_dict[s]])
-                os.system('sh run.sh')
-                os.chdir('..')
-        # reset the selected instance
-        self.selected_inst = None
 
     """
     Restart an NBODY6 Simulation.
@@ -695,6 +577,96 @@ class Run_Manager():
             sys.stdout.flush()
             sys.stderr.flush()
             time.sleep(300)
+
+    def task_selector(self):
+        """
+        Prompt a menu to allow the user to select a task.
+
+        :return: current selected task symbol.
+        """
+        opt = ''
+        while opt.lower() not in ['l', 's', 'n', 'r', 'c', 'x', 'd', 'k', 'b', 'p', 'q']:
+            sys.stdout.write('\n=======================================\n')
+            sys.stdout.write('\tList Instances (L), \n\tSelect Instance (S), '
+                             '\n\tNew Run (N), \n\tRestart (R), \n\tCheck status (C), '
+                             '\n\tExecute (X), \n\tDelete Instance (D), \n\tKill Instance (K), '
+                             '\n\tBackup Restart File (B), \n\tPost Processing (P), \n\tQuit (Q): \n')
+            opt = raw_input('\nPlease choose an action to continue: ').lower()
+
+        return opt
+
+    def task_handler(self, opt):
+        """
+        Handles the task selection input from the user.
+
+        :param opt: task unit symbol.
+        """
+
+        if opt == 'q':
+            sys.exit(0)
+        if opt == 'l':
+            self.gen_instance_list()
+        if opt in ['s', 'n', 'r', 'c', 'x', 'd', 'k', 'b', 'p']:
+            if self.mode == 'interactive':
+                if self.selected_inst == None or len(self.selected_inst)==0:
+                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
+                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
+
+        # TODO: use message? to rewrite this part in a smarter way
+        if opt == 'n':
+            self.inst_start_new()
+        if opt == 'r':
+            self.inst_restart()
+        if opt == 'c':
+            self.inst_check()
+        if opt == 'x':
+            self.inst_exec()
+        if opt == 'd':
+            self.inst_delete()
+        if opt == 'k':
+            self.inst_kill()
+        if opt == 'b':
+            self.inst_backup()
+        if opt == 'p':
+            for inst_id in self.selected_inst:
+                self.convert_out3_to_hdf5(int(inst_id))
+
+    def inst_start_new(self):
+        """Start a new Nbody6 simulation.
+        """
+        for s in self.selected_inst:
+            s = int(s)
+            sys.stdout.write("Starting #%d ==> %s\n" % (s, self.id_dict[s]))
+            if os.path.isfile(os.path.join(self.id_dict[s], 'process.pid')):
+                try:
+                    fpid = open(os.path.join(self.id_dict[s], 'process.pid'), 'r')
+                    pid = int(fpid.readline())
+                    fpid.close()
+                    if pid > 0:
+                        os.kill(pid, 0) # test if process exist
+                        sys.stdout.write('WARNING: the instance is already running. Will not start new run.\n')
+                        return
+                except (ValueError, OSError), e:
+                    # the instance is not running, can restart
+                    os.chdir(self.id_dict[s])
+                    # scan and remove any previous restarting dirs
+                    restart_dir = sorted(glob.glob('restart*/'))
+                    for r_dir in restart_dir:
+                        shutil.rmtree(r_dir)
+                    #proc = subprocess.Popen(['/bin/sh', self.id_dict[s]])
+                    os.system('sh run.sh')
+                    os.chdir('..')
+            else:
+                os.chdir(self.id_dict[s])
+                # scan and remove any previous restarting dirs
+                restart_dir = sorted(glob.glob('restart*/'))
+                for r_dir in restart_dir:
+                    shutil.rmtree(r_dir)
+                #proc = subprocess.Popen(['/bin/sh', self.id_dict[s]])
+                os.system('sh run.sh')
+                os.chdir('..')
+        # reset the selected instance
+        self.selected_inst = None
 
     """
     The automatic decision maker for the daemon.
