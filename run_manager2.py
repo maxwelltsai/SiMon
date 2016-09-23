@@ -47,7 +47,7 @@ class SimulationInstance(object):
             self.restarts = restarts # children
 
     """
-    Traverse the directory structure.
+    Traverse the directory structure, and print the structure information in the terminal.
 
     A hierarchical directory structure may form for a simulation that has been started for multiple times.
     For instance, a simulation is running on the directory '/sim1'. It crashes at T=120. So SiMon
