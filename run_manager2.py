@@ -8,7 +8,7 @@ import shutil
 import re
 import numpy as np
 import signal
-from .simulation_instances import SimulationInstance
+from simulation_instances import SimulationInstance
 
 
 # TODO: move the configuration to a text file called 'SiMon.conf'. Parse the config file with regex.
