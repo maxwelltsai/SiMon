@@ -17,7 +17,10 @@ sim_dir = '/Users/penny/Works/simon_project/nbody6/Ncode/run'  # Global configur
 
 class Run_Manager():
     def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
-            mode='interactive', cwd = sim_dir):
+                 mode='interactive', cwd = sim_dir):
+        """
+        :param pidfile:
+        """
         self.selected_inst = None
         self.id_dict = None
         self.id_dict_short = None
@@ -212,79 +215,7 @@ class Run_Manager():
         else:
             return 0, 0
 
-    """
-    Restart an NBODY6 Simulation.
-    """
-    def inst_restart(self):
-        restart_script_template = """touch 'start_time'
-        export OMP_NUM_THREADS=2
-        export GPU_LIST="%d"
-        rm fort.* OUT* ESC COLL COAL data.h5part
-        ../../nbody6 < input 1>output.log 2>output.err &
-        echo $! > process.pid
-        """
 
-        for r in self.selected_inst:
-            r = int(r)
-            sys.stdout.write("Restarting #%d ==> %s\n" % (r, self.id_dict[r]))
-            # Retrieve a list of restart files
-            original_dir = os.getcwd()
-            os.chdir(self.id_dict[r])
-            rfiles = glob.glob('restart.tmp.*')
-            os.chdir(original_dir)
-            try:
-                rfile_list = sorted(rfiles, key=lambda fn: int(fn.split('.')[2]))
-            except ValueError, e:
-                print e
-                rfile_list = sorted(rfiles)
-            # Retrieve a list of restart directories
-            rdir_list = glob.glob(os.path.join(self.id_dict[r], 'restart*/'))
-            restart_dir_name = ''
-            restart_file_name = ''
-            if len(rfile_list)>len(rdir_list):
-                restart_dir_name = 'restart'+str(len(rdir_list)+1)
-                restart_file_name = os.path.join(self.id_dict[r], rfile_list[len(rfile_list)-1-len(rdir_list)])
-                sys.stdout.write('The file %s will be used for restart.\n' % restart_file_name)
-            else:
-                sys.stderr.write('ERROR [SEVERE]: unable to proceed the simulation %s\n' % self.id_dict[r])
-                fnorestart = open(os.path.join(self.id_dict[r], 'NORESTART'), 'w')
-                fnorestart.write('NORESTART')
-                fnorestart.close()
-                return
-
-            errortype = self.check_instance_error_type(r)
-            os.chdir(self.id_dict[r])
-            os.mkdir(restart_dir_name)
-            if os.path.isfile(restart_file_name):
-                shutil.copyfile(restart_file_name, os.path.join(restart_dir_name, 'restart.dat'))
-            else:
-                shutil.copyfile('restart.tmp', os.path.join(restart_dir_name, 'restart.dat'))
-            sys.stdout.write('\t\t%s ==> %s/restart.dat\n' % (restart_file_name, restart_dir_name))
-            if os.path.isfile('restart.sh'):
-                shutil.copyfile('restart.sh', os.path.join(restart_dir_name, 'run.sh'))
-            else:
-                f_restart = open(os.path.join(restart_dir_name, 'run.sh'), 'w')
-                d_name = self.id_dict[r]
-                pot_type = ''
-                if 'pm' in d_name:
-                    pot_type = 'pm'
-                elif 'iso' in d_name:
-                    pot_type = 'iso'
-                elif 'power' in d_name:
-                    pot_type = 'power'
-                f_restart.write(restart_script_template % (r%4, '../'*(self.sim_inst_dict[r].level+1), pot_type))
-                f_restart.close()
-            input_file = open(os.path.join(restart_dir_name, 'input'), 'w')
-            sys.stdout.write('Instance error type: ' + errortype + '\n')
-            restart_file_text = self.smart_restart(errortype)
-            sys.stdout.write(restart_file_text+'\n')
-            input_file.write(restart_file_text)
-            input_file.close()
-            os.chdir(restart_dir_name)
-            os.system('sh run.sh')
-            os.chdir('../..')
-        # reset the selected instance
-        self.selected_inst = None
 
 
     """
@@ -632,39 +563,148 @@ class Run_Manager():
                 self.convert_out3_to_hdf5(int(inst_id))
 
     def inst_start_new(self):
-        """Start a new Nbody6 simulation.
+        """Start a new Nbody6 simulation,
         """
         for s in self.selected_inst:
             s = int(s)
             sys.stdout.write("Starting #%d ==> %s\n" % (s, self.id_dict[s]))
+            # for each instance processing, there is a process.pid file, which contains a number
+            # later process.pid will be overwrote or created by run.sh - os.system('sh run.sh')
+            #
+            # late line on run.sh:
+            # ../../nbody6 < input 1>output.log 2>output.err  & echo $! > process.pid
             if os.path.isfile(os.path.join(self.id_dict[s], 'process.pid')):
                 try:
                     fpid = open(os.path.join(self.id_dict[s], 'process.pid'), 'r')
                     pid = int(fpid.readline())
                     fpid.close()
                     if pid > 0:
-                        os.kill(pid, 0) # test if process exist
+                        os.kill(pid, 0)  # test if process exist, if not then an OSError will pop up
                         sys.stdout.write('WARNING: the instance is already running. Will not start new run.\n')
                         return
-                except (ValueError, OSError), e:
-                    # the instance is not running, can restart
+                except (ValueError, OSError):  # the instance is not running, can start a new instance
                     os.chdir(self.id_dict[s])
                     # scan and remove any previous restarting dirs
-                    restart_dir = sorted(glob.glob('restart*/'))
+
+                    # a restart dir is created for restoring new restart result, without overwirte previous ones
+                    # coz the restart will start from the crashed point eg.[T=20]
+                    restart_dir = glob.glob('restart*/')
                     for r_dir in restart_dir:
                         shutil.rmtree(r_dir)
-                    #proc = subprocess.Popen(['/bin/sh', self.id_dict[s]])
                     os.system('sh run.sh')
                     os.chdir('..')
             else:
                 os.chdir(self.id_dict[s])
                 # scan and remove any previous restarting dirs
-                restart_dir = sorted(glob.glob('restart*/'))
+                restart_dir = glob.glob('restart*/')
                 for r_dir in restart_dir:
                     shutil.rmtree(r_dir)
-                #proc = subprocess.Popen(['/bin/sh', self.id_dict[s]])
                 os.system('sh run.sh')
                 os.chdir('..')
+        # reset the selected instance
+        self.selected_inst = None
+
+    # TODO: add more comments for each section in inst_restart
+    def inst_restart(self):
+        """
+        Restart an NBODY6 Simulation.
+        """
+        # restart.sh content
+        restart_script_template = """touch 'start_time'
+        export OMP_NUM_THREADS=2
+        export GPU_LIST="%d"
+        rm fort.* OUT* ESC COLL COAL data.h5part
+        ../../nbody6 < input 1>output.log 2>output.err &
+        echo $! > process.pid
+        """
+
+        for r in self.selected_inst:
+            r = int(r)  # ID of the instance
+            sys.stdout.write("Restarting #%d ==> %s\n" % (r, self.id_dict[r]))
+
+            # Retrieve a list of restart files
+            original_dir = os.getcwd()
+            os.chdir(self.id_dict[r])
+            rfiles = glob.glob('restart.tmp.*')  # * here stands for time
+            os.chdir(original_dir)
+
+            try:
+                # last time of backing up the restart file
+                rfile_list = sorted(rfiles, key=lambda fn: int(fn.split('.')[2]))
+            except ValueError, e:
+                print e
+                rfile_list = sorted(rfiles)
+
+            # Retrieve a list of restart directories
+            rdir_list = glob.glob(os.path.join(self.id_dict[r], 'restart*/'))
+            '''
+            nbody will generate some restart.tmp, overwrote every 2 min
+            so SiMon need to backup each restart.tmp with time
+            '''
+            # len(rdir_list) : how many times it gets crashed
+            # len(rfile_list) : how many restart tmp files -> running time
+
+            '''
+            every time SiMon will check former T-period restart.tmp (the back up one)
+            to try to restart from current T-period, in a iterated way
+            While when Simon runs out of all tmp resources, a No-Restart file will be created
+            and this instance is gave up and never restarted :(
+
+            TODO: find a theory for this idea!
+            '''
+            if len(rfile_list) > len(rdir_list):
+                restart_dir_name = 'restart'+str(len(rdir_list)+1)
+                restart_file_name = os.path.join(self.id_dict[r], rfile_list[len(rfile_list)-1-len(rdir_list)])
+                sys.stdout.write('The file %s will be used for restart.\n' % restart_file_name)
+            else:
+                sys.stderr.write('ERROR [SEVERE]: unable to proceed the simulation %s\n' % self.id_dict[r])
+                fnorestart = open(os.path.join(self.id_dict[r], 'NORESTART'), 'w')
+                fnorestart.write('NORESTART')
+                fnorestart.close()
+                return
+
+            # check error type to restart accordingly
+            errortype = self.check_instance_error_type(r)
+            os.chdir(self.id_dict[r])
+            os.mkdir(restart_dir_name)  # restart 1 , 2, 3 ...
+
+            # restart.dat: latest of restart.tmp in nbody code
+            if os.path.isfile(restart_file_name):
+                shutil.copyfile(restart_file_name, os.path.join(restart_dir_name, 'restart.dat'))
+            else:
+                shutil.copyfile('restart.tmp', os.path.join(restart_dir_name, 'restart.dat'))
+            sys.stdout.write('\t\t%s ==> %s/restart.dat\n' % (restart_file_name, restart_dir_name))
+
+            if os.path.isfile('restart.sh'):
+                shutil.copyfile('restart.sh', os.path.join(restart_dir_name, 'run.sh'))
+            else:
+                f_restart = open(os.path.join(restart_dir_name, 'run.sh'), 'w')
+                d_name = self.id_dict[r]
+                # TODO: ignore pot_type
+                pot_type = ''
+                if 'pm' in d_name:
+                    pot_type = 'pm'
+                elif 'iso' in d_name:
+                    pot_type = 'iso'
+                elif 'power' in d_name:
+                    pot_type = 'power'
+                f_restart.write(restart_script_template % (r%4, '../'*(self.sim_inst_dict[r].level+1), pot_type))
+                f_restart.close()
+
+            # create input file for restart
+            input_file = open(os.path.join(restart_dir_name, 'input'), 'w')
+            sys.stdout.write('Instance error type: ' + errortype + '\n')
+
+            # create a new restart input file according to error type
+            restart_file_text = self.smart_restart(errortype)
+            sys.stdout.write(restart_file_text+'\n')
+            input_file.write(restart_file_text)
+            input_file.close()
+
+            os.chdir(restart_dir_name)
+            os.system('sh run.sh')
+            os.chdir('../..')
+            
         # reset the selected instance
         self.selected_inst = None
 
