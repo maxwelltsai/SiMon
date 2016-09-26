@@ -1,7 +1,7 @@
 import datetime
 
 
-class SimulationInstance(object):
+class SimulationTask(object):
     """
     A simulation instance is a single simulation task which the user requests to finish.
     It is associated with 1) a set of initial conditions specified in the input file,
