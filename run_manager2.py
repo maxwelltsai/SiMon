@@ -186,12 +186,6 @@ class Run_Manager():
                 update_needed = False
         print self.sim_tree
 
-
-
-
-
-
-
     """
     Output an overview of the simulation status in the terminal.
     """
@@ -214,180 +208,6 @@ class Run_Manager():
             return np.min(t_list), np.max(t_list)
         else:
             return 0, 0
-
-
-
-
-    """
-    Check the status of the current simulation instance.
-    """
-    def inst_check(self):
-
-        for c in self.selected_inst:
-            c = int(c)
-            sys.stdout.write('========== Diagnose for #%d ==> %s ==========\n' % (c, self.id_dict[c]))
-            check_dir_name = self.id_dict[c]
-            original_dir = os.getcwd()
-            os.chdir(check_dir_name)
-            os.system('\ncat input')
-            os.system('\ngrep ADJUST output.log | tail -10')
-            os.system('\ngrep "N =" output.log | tail -10')
-            os.system('\ntail -10 output.log')
-            restart_dir = sorted(glob.glob('restart*/'))
-            for r_dir in restart_dir:
-                os.chdir(r_dir)
-                sys.stdout.write('========== Diagnose for restart ==> %s ==========\n' % (r_dir))
-                os.system('\ncat input')
-                os.system('\ngrep ADJUST output.log | tail -10')
-                os.system('\ngrep "N =" output.log | tail -10')
-                os.system('\ntail -10 output.log')
-                os.chdir('..')
-
-            os.chdir(original_dir)
-
-
-    """
-    Allow the user to execute a UNIX command in the directory of the currently active simulation instance.
-    """
-    def inst_exec(self, cmd=None):
-        if cmd == None:
-            cmd = raw_input('CMD>> ')
-        for e in self.selected_inst:
-            e = int(e)
-            sys.stdout.write('========== Command on #%d ==> %s (PWD=%s) ==========\n' % (e, self.id_dict[e], self.id_dict[e]))
-            original_dir = os.getcwd()
-            os.chdir(self.id_dict[e])
-            os.system(cmd)
-            sys.stdout.write('========== [DONE] Command on #%d ==> %s (PWD=%s) ==========\n' % (e, self.id_dict[e], self.id_dict[e]))
-            os.chdir(original_dir)
-
-    """
-    Delete a simulation directory with all its data, including all the subdirectory created through restarting.
-    """
-    def inst_delete(self):
-
-        for d in self.selected_inst:
-            d = int(d)
-            if self.mode == 'interactive':
-                confirm = raw_input('Are you sure you would like to delete the instance #%d and its sub-instances? [Y/N] ' % d).lower()
-            else:
-                confirm = 'y'
-
-            if confirm == 'y':
-                shutil.rmtree(self.id_dict[d])
-            if self.mode == 'interactive':
-                show = raw_input('Instance deleted. Show a new list of instances? [Y/N] ').lower()
-            else:
-                show = 'y'
-
-                if show == 'y':
-                    self.gen_instance_list()
-                else:
-                    sys.stdout.write('Instance deletion aborted.\n')
-        # reset the selected instance
-        self.selected_inst = None
-
-    """
-    Kill the UNIX process of a simulation.
-    """
-    def inst_kill(self):
-
-        for k in self.selected_inst:
-            k = int(k)
-            inst_dir = self.id_dict[k]
-            if os.path.isfile(os.path.join(inst_dir, 'process.pid')):
-                fpid = open(os.path.join(inst_dir, 'process.pid'), 'r')
-                try:
-                    pid = 0
-                    pid = int(fpid.readline())
-                except (ValueError, OSError), e:
-                    sys.stdout.write('Unable to kill instance #%d: unable to determine pid.\n' % k)
-                fpid.close()
-                if self.mode == 'interactive':
-                    confirm = raw_input('Are you sure you would like to kill the instance #%d? [Y/N] ' % k).lower()
-                else:
-                    confirm = 'y'
-
-                if confirm == 'y':
-                    try:
-                        if pid > 0:
-                            os.kill(pid, signal.SIGKILL)
-                            sys.stdout.write('Instance %d [pid=%d] killed.\n' % (k, pid))
-                    except OSError, err:
-                        sys.stdout.write('Cannot kill the process: \n' + str(err))
-            else:
-                sys.stdout.write('Unable to kill instance #%d: unable to determine pid.\n' % k)
-
-        # reset the selected instance
-        self.selected_inst = None
-
-    """
-    Backup the simulation data files and restart files.
-
-    Sometimes, a code crashes during the output of its data file, corrupting the output/restart file.
-    The consequence of this corruption is fatal, because this makes it impossible to read the data even
-    after the simulation finishes, and/or making it impossibe to restart the simulation when it crashes.
-
-    SiMon peroidically backs up those important files.
-    """
-    def inst_backup(self):
-
-        for b in self.selected_inst:
-            b = int(b)
-            inst_dir = self.id_dict[b]
-            t_min, t_max = self.get_sim_status(inst_dir)
-            original_dir = os.getcwd()
-            os.chdir(inst_dir)
-            restart_file_list = glob.glob('restart.tmp.*')
-            need_backup = True
-            for rf in restart_file_list:
-                if str(t_max) in rf:
-                    need_backup = False
-                    break
-            if need_backup:
-                restart_file_name = 'restart.tmp.'+str(t_max)
-                if os.path.isfile('restart.tmp'):
-                    shutil.copyfile('restart.tmp', restart_file_name)
-                elif os.path.isfile('restart.prev'):
-                    shutil.copyfile('restart.prev', restart_file_name)
-                sys.stdout.write('Restart file has been backup as '+restart_file_name+'\n')
-            else:
-                sys.stdout.write('Restart file is already the latest. \n')
-            os.chdir(original_dir)
-
-
-    """
-    Convert the NBODY6 OUT3 data file to HDF5 file.
-    """
-    def convert_out3_to_hdf5(self, inst_id):
-        inst = self.sim_inst_dict[inst_id]
-        original_path = os.getcwd()
-        os.chdir(inst.fulldir)
-        sim_path = []
-        out3_path = ''
-        while inst.cid != -1:
-            sim_path.append(inst)
-            out3_path = out3_path + ' ' + os.path.join(inst.fulldir, 'OUT3')
-            inst = self.sim_inst_dict[inst.cid]
-        sim_path.append(inst)
-        out3_path = out3_path + ' ' + os.path.join(inst.fulldir, 'OUT3')
-
-        # generate the out3_to_hdf5 script
-        fout3 = open('convert_out3_to_hdf5.sh', 'w')
-        shutil.copy('/user/epsguest/eps310/out3_to_hdf5.py', os.getcwd())
-        shutil.copy('/user/epsguest/eps310/make_plots.py', os.getcwd())
-        fout3.write("python out3_to_hdf5.py -f '%s'\n" % out3_path)
-        fout3.write('PID=$!\n')
-        fout3.write('wait $PID\n')
-        fout3.write('python make_plots.py\n')
-        fout3.write('PID=$!\n')
-        fout3.write('wait $PID\n')
-        fout3.write('cp out.hdf5.pdf ~/tt_plots/'+self.sim_inst_dict[inst_id].name+'.pdf')
-        fout3.close()
-        # execute the script
-        os.system('sh convert_out3_to_hdf5.sh 1>out3.log 2>out3.err &')
-        os.chdir(original_path)
-
 
     """
     Check if a simulation is hung.
@@ -473,19 +293,6 @@ class Run_Manager():
         return errortype
 
     """
-    Restart the NBODY6 simulation according to the error type.
-    """
-    def smart_restart(self, errortype):
-        restart_file_text = ''
-        if errortype == 'SMALL STEP':
-            restart_file_text = '4 10000000.0\n0.03 0.02 0.02 0.0 0.0 0\n30000 0 0\n30000 0 0'
-        elif errortype == 'CALCULATIONS HALTED':
-            restart_file_text = '4 10000000.0\n0.01 0.01 0.01 0.0 0.0 0\n30000 0 0\n30000 0 0'
-        else:
-            restart_file_text = '4 10000000.0\n0.02 0.02 0.02 0.0 0.0 0\n30000 0 0\n30000 0 0'
-        return restart_file_text
-
-    """
     The entry point of this script if it is run directory (i.e. without a daemon).
     """
     def main(self):
@@ -499,6 +306,7 @@ class Run_Manager():
     """
     The entry point of this script if it is run with the daemon.
     """
+    # TODO: when this would be called? could we split run with daemon part with the main run directory?
     def run(self):
         os.chdir(self.cwd)
         self.gen_instance_list()
@@ -637,14 +445,11 @@ class Run_Manager():
 
             # Retrieve a list of restart directories
             rdir_list = glob.glob(os.path.join(self.id_dict[r], 'restart*/'))
+
             '''
             nbody will generate some restart.tmp, overwrote every 2 min
             so SiMon need to backup each restart.tmp with time
-            '''
-            # len(rdir_list) : how many times it gets crashed
-            # len(rfile_list) : how many restart tmp files -> running time
 
-            '''
             every time SiMon will check former T-period restart.tmp (the back up one)
             to try to restart from current T-period, in a iterated way
             While when Simon runs out of all tmp resources, a No-Restart file will be created
@@ -652,6 +457,9 @@ class Run_Manager():
 
             TODO: find a theory for this idea!
             '''
+
+            # len(rdir_list) : how many times it gets crashed
+            # len(rfile_list) : how many restart tmp files -> running time
             if len(rfile_list) > len(rdir_list):
                 restart_dir_name = 'restart'+str(len(rdir_list)+1)
                 restart_file_name = os.path.join(self.id_dict[r], rfile_list[len(rfile_list)-1-len(rdir_list)])
@@ -707,6 +515,189 @@ class Run_Manager():
             
         # reset the selected instance
         self.selected_inst = None
+
+    def smart_restart(self, errortype):
+        """
+        Rewrite input file with error type relevant text.
+        """
+        if errortype == 'SMALL STEP':
+            restart_file_text = '4 10000000.0\n0.03 0.02 0.02 0.0 0.0 0\n30000 0 0\n30000 0 0'
+        elif errortype == 'CALCULATIONS HALTED':
+            restart_file_text = '4 10000000.0\n0.01 0.01 0.01 0.0 0.0 0\n30000 0 0\n30000 0 0'
+        else:
+            restart_file_text = '4 10000000.0\n0.02 0.02 0.02 0.0 0.0 0\n30000 0 0\n30000 0 0'
+        return restart_file_text
+
+    def inst_check(self):
+        """
+        Check the status of the current simulation instance and output to terminal.
+        """
+        for c in self.selected_inst:
+            c = int(c)
+            sys.stdout.write('========== Diagnose for #%d ==> %s ==========\n' % (c, self.id_dict[c]))
+            check_dir_name = self.id_dict[c]
+            original_dir = os.getcwd()
+            os.chdir(check_dir_name)
+            os.system('\ncat input')
+            os.system('\ngrep ADJUST output.log | tail -10')
+            os.system('\ngrep "N =" output.log | tail -10')
+            os.system('\ntail -10 output.log')
+            restart_dir = sorted(glob.glob('restart*/'))
+            for r_dir in restart_dir:
+                os.chdir(r_dir)
+                sys.stdout.write('========== Diagnose for restart ==> %s ==========\n'
+                                 % (r_dir))
+                os.system('\ncat input')
+                os.system('\ngrep ADJUST output.log | tail -10')
+                os.system('\ngrep "N =" output.log | tail -10')
+                os.system('\ntail -10 output.log')
+                os.chdir('..')
+
+            os.chdir(original_dir)
+
+    def inst_exec(self, cmd=None):
+        """
+        Allow the user to execute a UNIX command in the directory of the currently active simulation instance.
+        """
+        if cmd is None:
+            cmd = raw_input('CMD>> ')
+        for e in self.selected_inst:
+            e = int(e)
+            sys.stdout.write('========== Command on #%d ==> %s (PWD=%s) ==========\n'
+                             % (e, self.id_dict[e], self.id_dict[e]))
+            original_dir = os.getcwd()
+            os.chdir(self.id_dict[e])
+            os.system(cmd)
+            sys.stdout.write('========== [DONE] Command on #%d ==> %s (PWD=%s) ==========\n'
+                             % (e, self.id_dict[e], self.id_dict[e]))
+            os.chdir(original_dir)
+
+    def inst_delete(self):
+        """
+        Delete a simulation directory with all its data,
+        including all the subdirectory created through restarting.
+        """
+        # TODO: remove repeated code, why need a confirm = raw_input(...).lower()?
+        for d in self.selected_inst:
+            d = int(d)
+            if self.mode == 'interactive':
+                confirm = raw_input('Are you sure you would like to delete the instance '
+                                    '#%d and its sub-instances? [Y/N] ' % d).lower()
+            else:
+                shutil.rmtree(self.id_dict[d])
+
+            if self.mode == 'interactive':
+                show = raw_input('Instance deleted. Show a new list of instances? [Y/N] ').lower()
+            else:
+                show = 'y'
+
+            if show == 'y':
+                self.gen_instance_list()
+            else:
+                sys.stdout.write('Instance deletion aborted.\n')
+        # reset the selected instance
+        self.selected_inst = None
+
+    def inst_kill(self):
+        """
+        Kill the UNIX process of a simulation.
+        """
+        for k in self.selected_inst:
+            k = int(k)
+            inst_dir = self.id_dict[k]
+            if os.path.isfile(os.path.join(inst_dir, 'process.pid')):
+                fpid = open(os.path.join(inst_dir, 'process.pid'), 'r')
+                try:
+                    pid = 0
+                    pid = int(fpid.readline())
+                except (ValueError, OSError), e:
+                    sys.stdout.write('Unable to kill instance #%d: unable to determine pid.\n' % k)
+                fpid.close()
+                if self.mode == 'interactive':
+                    confirm = raw_input('Are you sure you would like to kill the instance #%d? [Y/N] '
+                                        % k).lower()
+                else:
+                    try:
+                        if pid > 0:
+                            os.kill(pid, signal.SIGKILL)
+                            sys.stdout.write('Instance %d [pid=%d] killed.\n' % (k, pid))
+                    except OSError, err:
+                        sys.stdout.write('Cannot kill the process: \n' + str(err))
+            else:  # TODO: here the else should be 'no process.pid file found'
+                sys.stdout.write('Unable to kill instance #%d: unable to determine pid.\n' % k)
+
+        # reset the selected instance
+        self.selected_inst = None
+
+    def inst_backup(self):
+        """
+        Backup the simulation data files and restart files.
+
+        Notes
+        -------
+        Sometimes, a code crashes during the output of its data file, corrupting the output/restart file.
+        The consequence of this corruption is fatal, because this makes it impossible to read the data even
+        after the simulation finishes, and/or making it impossibe to restart the simulation when it crashes.
+
+        SiMon peroidically backs up those important files.
+        """
+        # TODO: more comments here?
+        for b in self.selected_inst:
+            b = int(b)
+            inst_dir = self.id_dict[b]
+            t_min, t_max = self.get_sim_status(inst_dir)
+            original_dir = os.getcwd()
+            os.chdir(inst_dir)
+            restart_file_list = glob.glob('restart.tmp.*')
+            need_backup = True
+            for rf in restart_file_list:
+                if str(t_max) in rf:
+                    need_backup = False
+                    break
+            if need_backup:
+                restart_file_name = 'restart.tmp.'+str(t_max)
+                if os.path.isfile('restart.tmp'):
+                    shutil.copyfile('restart.tmp', restart_file_name)
+                elif os.path.isfile('restart.prev'):
+                    shutil.copyfile('restart.prev', restart_file_name)
+                sys.stdout.write('Restart file has been backup as '+restart_file_name+'\n')
+            else:
+                sys.stdout.write('Restart file is already the latest. \n')
+            os.chdir(original_dir)
+
+    def convert_out3_to_hdf5(self, inst_id):
+        """
+        Convert the NBODY6 OUT3 data file to HDF5 file.
+        """
+        # TODO: more comments here?
+        inst = self.sim_inst_dict[inst_id]
+        original_path = os.getcwd()
+        os.chdir(inst.fulldir)
+        sim_path = []
+        out3_path = ''
+        while inst.cid != -1:
+            sim_path.append(inst)
+            out3_path = out3_path + ' ' + os.path.join(inst.fulldir, 'OUT3')
+            inst = self.sim_inst_dict[inst.cid]
+        sim_path.append(inst)
+        out3_path = out3_path + ' ' + os.path.join(inst.fulldir, 'OUT3')
+
+        # generate the out3_to_hdf5 script
+        fout3 = open('convert_out3_to_hdf5.sh', 'w')
+        shutil.copy('/user/epsguest/eps310/out3_to_hdf5.py', os.getcwd())
+        shutil.copy('/user/epsguest/eps310/make_plots.py', os.getcwd())
+        fout3.write("python out3_to_hdf5.py -f '%s'\n" % out3_path)
+        fout3.write('PID=$!\n')
+        fout3.write('wait $PID\n')
+        fout3.write('python make_plots.py\n')
+        fout3.write('PID=$!\n')
+        fout3.write('wait $PID\n')
+        fout3.write('cp out.hdf5.pdf ~/tt_plots/'+self.sim_inst_dict[inst_id].name+'.pdf')
+        fout3.close()
+
+        # execute the script
+        os.system('sh convert_out3_to_hdf5.sh 1>out3.log 2>out3.err &')
+        os.chdir(original_path)
 
     """
     The automatic decision maker for the daemon.

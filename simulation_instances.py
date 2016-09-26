@@ -65,7 +65,7 @@ class SimulationInstance(object):
         ctime_str = datetime.datetime.fromtimestamp(self.ctime).strftime('%Y-%m-%d %H:%M:%S')
         mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%Y-%m-%d %H:%M:%S')
         info = "%s\t%s\t%s\n%s%s\tT=[%d-%d]\t%s\tCID=%d\tlevel=%d" % (repr(self.name), ctime_str, mtime_str,
-                placeholder_space, self.status, self.t_min, self.t_max, self.errortype,self.cid,self.level)
+                placeholder_space, self.status, self.t_min, self.t_max, self.errortype, self.cid, self.level)
         ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
         #ret = "    "*level+str(self.id)+repr(self.name)+"\n"
         for child in self.restarts:
