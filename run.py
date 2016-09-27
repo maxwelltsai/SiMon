@@ -3,22 +3,39 @@
 
 # standard python libs
 import logging
+import sys
 
 from daemon import runner
 from daemon_mode import DaemonModeManager
 from interactive_mode import InteractiveModeManager
 
-user_input = raw_input('select a mode: interactive[i] or daemon[d] \n')
 
-while user_input.lower() not in ['i', 'd']:
-    user_input = raw_input('input again: must be either i or d\n')
+def print_help():
+    print('Usage: python run.py start|stop|interactive|help')
+    print('\tstart: start the daemon')
+    print('\tstop: stop the daemon')
+    print('\tinteractive: run in interactive mode (no daemon) [default]')
+    print('\thelp: print this help message')
 
-if user_input.lower() == 'i':
+
+def interactive_mode():
+    """
+    Run SiMon in the interactive mode. In this mode, the user can see an overview of the simulation status from the
+    terminal, and control the simulations accordingly.
+    :return:
+    """
     imm = InteractiveModeManager()
     imm.main()
 
-if user_input.lower() == 'd':
-    # instance of run_manager
+
+def daemon_mode():
+    """
+    Run SiMon in the daemon mode.
+
+    In this mode, SiMon will behave as a daemon process. It will scan all simulations periodically, and take measures
+    if necessary.
+    :return:
+    """
     app = DaemonModeManager()
 
     # log system
@@ -34,3 +51,18 @@ if user_input.lower() == 'd':
     # This ensures that the logger file handle does not get closed during daemonization
     daemon_runner.daemon_context.files_preserve = [handler.stream]
     daemon_runner.do_action()  # fixed time period of calling run()
+
+
+if len(sys.argv) == 1:
+    print('Running SiMon in the interactive mode...')
+    interactive_mode()
+elif len(sys.argv) > 1:
+    if sys.argv[1] in ['start', 'stop']:
+        # python daemon will handle these two arguments
+        daemon_mode()
+    elif sys.argv[1] in ['interactive', 'i']:
+        interactive_mode()
+    else:
+        print_help()
+        sys.exit(0)
+

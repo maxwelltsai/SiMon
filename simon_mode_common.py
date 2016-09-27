@@ -12,7 +12,8 @@ from simulation_instances import SimulationTask
 
 
 # TODO: move the configuration to a text file called 'SiMon.conf'. Parse the config file with regex.
-sim_dir = '/Users/penny/Works/simon_project/nbody6/Ncode/run'  # Global configurations
+# sim_dir = '/Users/penny/Works/simon_project/nbody6/Ncode/run'  # Global configurations
+sim_dir = '/Users/maxwell/Works/nbody6/Ncode/run'
 
 
 class ModeManager(object):
