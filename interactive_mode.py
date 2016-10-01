@@ -3,12 +3,12 @@ import sys
 import time
 import shutil
 
-from simon_mode_common import ModeManager
+from simon_mode_common import SiMon
 
 
-class InteractiveModeManager(ModeManager):
+class InteractiveSiMon(SiMon):
     def __init__(self):
-        super(InteractiveModeManager, self).__init__()
+        super(InteractiveSiMon, self).__init__()
 
     def main(self):
         """

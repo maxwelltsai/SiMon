@@ -2,17 +2,17 @@ import os
 import sys
 import time
 
-from simon_mode_common import ModeManager
+from simon_mode_common import SiMon
 
 
-class DaemonModeManager(ModeManager):
+class DaemonSiMon(SiMon):
 
     def __init__(self):
-        super(DaemonModeManager, self).__init__(pidfile=os.path.join(os.getcwd(), 'run_mgr_daemon.pid'),
-                                           stdin='/dev/tty',
-                                           stdout=os.path.join(os.getcwd(), 'out'),
-                                           stderr=os.path.join(os.getcwd(), 'err'),
-                                           mode='daemon')
+        super(DaemonSiMon, self).__init__(pidfile=os.path.join(os.getcwd(), 'run_mgr_daemon.pid'),
+                                          stdin='/dev/tty',
+                                          stdout=os.path.join(os.getcwd(), 'out'),
+                                          stderr=os.path.join(os.getcwd(), 'err'),
+                                          mode='daemon')
 
     def run(self):
         """

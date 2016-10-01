@@ -8,14 +8,17 @@ import shutil
 import re
 import numpy as np
 import signal
-from simulation_instances import SimulationTask
+from simulation_task import SimulationTask
 
 
 # TODO: move the configuration to a text file called 'SiMon.conf'. Parse the config file with regex.
 sim_dir = '/Users/penny/Works/simon_project/nbody6/Ncode/run'  # Global configurations
 
 
-class ModeManager(object):
+class SiMon(object):
+    """
+    Main code of Simulation Monitor (SiMon).
+    """
     def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
                  mode='interactive', cwd=sim_dir):
         """
@@ -120,14 +123,13 @@ class ModeManager(object):
                         self.sim_inst_parent_dict[dir].cid = sim_inst.id
                         self.sim_inst_parent_dict[dir].t_max_extended = sim_inst.t_max_extended
 
-    # TODO:  add return description and type
     def gen_instance_list(self):
         """
         Generate the simulation tree data structure, so that a restarted simulation can trace back
-        to its ansestor.
+        to its ancestor.
 
-        :return:
-        :type:
+        :return: The method has no return. The output of the method is on the TTY.
+        :type: None
         """
         os.chdir(self.cwd)
         self.id_dict = dict()

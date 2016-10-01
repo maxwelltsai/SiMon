@@ -5,8 +5,8 @@
 import logging
 
 from daemon import runner
-from daemon_mode import DaemonModeManager
-from interactive_mode import InteractiveModeManager
+from daemon_mode import DaemonSiMon
+from interactive_mode import InteractiveSiMon
 
 user_input = raw_input('select a mode: interactive[i] or daemon[d] \n')
 
@@ -14,12 +14,12 @@ while user_input.lower() not in ['i', 'd']:
     user_input = raw_input('input again: must be either i or d\n')
 
 if user_input.lower() == 'i':
-    imm = InteractiveModeManager()
+    imm = InteractiveSiMon()
     imm.main()
 
 if user_input.lower() == 'd':
     # instance of run_manager
-    app = DaemonModeManager()
+    app = DaemonSiMon()
 
     # log system
     logger = logging.getLogger("DaemonLog")
