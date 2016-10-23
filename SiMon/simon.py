@@ -220,6 +220,20 @@ class SiMon(object):
         Handles the task selection input from the user (in the interactive mode).
 
         :param opt: The option from user input.
+
+        Note::
+        -----
+        List Instances (L)
+        Select Instance (S)
+        New Run (N) # start new simulations
+        Restart (R) # restart simulation
+        Check status (C) # check the recent or current status of the simulation and print it
+        Execute (X)  # execute an UNIX shell command in the simulation directory
+        Delete Instance (D) # delete the simulation tree and all its data
+        Kill Instance (K) # kill the UNIX process associate with a simulation task
+        Backup Restart File (B)  # backup the simulation checkpoint files (for restarting purpose in the future)
+        Post Processing (P) # perform (post)-processing (usually after the simulation is done), what is post-processing?
+        Quit (Q)
         """
 
         if opt == 'q':  # quit interactive mode
@@ -234,54 +248,29 @@ class SiMon(object):
                     sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
 
         # TODO: use message? to rewrite this part in a smarter way
-        if opt == 'n':  # start new simulations
-            for sid in self.selected_inst:
-                if sid in self.sim_inst_dict:
+        for sid in self.selected_inst:
+            if sid in self.sim_inst_dict:
+                if opt == 'n':
                     self.sim_inst_dict[sid].sim_start()
-                else:
-                    print('The selected simulation with ID = %d does not exist. Simulation not started.\n' % sid)
-        if opt == 'r':  # restart simulations
-            for sid in self.selected_inst:
-                if sid in self.sim_inst_dict:
+                if opt == 'r':
                     self.sim_inst_dict[sid].sim_restart()
-                else:
-                    print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
-        if opt == 'c':  # check the recent or current status of the simulation and print it
-            for sid in self.selected_inst:
-                if sid in self.sim_inst_dict:
+                if opt == 'c':
                     self.sim_inst_dict[sid].sim_collect_recent_output_message()
-                else:
-                    print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
-        if opt == 'x':  # execute an UNIX shell command in the simulation directory
-            for sid in self.selected_inst:
-                if sid in self.sim_inst_dict:
+                if opt == 'x':
                     self.sim_inst_dict[sid].sim_shell_exec()
-                else:
-                    print('The selected simulation with ID = %d does not exist. Cannot execute command.\n' % sid)
-        if opt == 'd':  # delete the simulation tree and all its data
-            for sid in self.selected_inst:
-                if sid in self.sim_inst_dict:
+                if opt == 'd':
                     self.sim_inst_dict[sid].sim_delete()
-                else:
-                    print('The selected simulation with ID = %d does not exist. Cannot delete simulation.\n' % sid)
-        if opt == 'k':  # kill the UNIX process associate with a simulation task
-            for sid in self.selected_inst:
-                if sid in self.sim_inst_dict:
+                if opt == 'k':
                     self.sim_inst_dict[sid].sim_kill()
-                else:
-                    print('The selected simulation with ID = %d does not exist. Cannot kill simulation.\n' % sid)
-        if opt == 'b':  # backup the simulation checkpoint files (for restarting purpose in the future)
-            for sid in self.selected_inst:
-                if sid in self.sim_inst_dict:
+                if opt == 'b':
                     self.sim_inst_dict[sid].sim_backup_checkpoint()
-                else:
-                    print('The selected simulation with ID = %d does not exist. Cannot backup checkpoint.\n' % sid)
-        if opt == 'p':  # perform (post)-processing (usually after the simulation is done)
-            for sid in self.selected_inst:
-                if sid in self.sim_inst_dict:
+                if opt == 'p':
+                    # for inst_id in self.selected_inst:
+                    #     self.convert_out3_to_hdf5(int(inst_id))
                     pass
-                else:
-                    print('The selected simulation with ID = %d does not exist. Cannot perform postprocessing.\n' % sid)
+            else:
+                # TODO: add a dict for all options
+                print('The selected simulation with ID = %d does not exist. \n' % sid)
 
     def auto_scheduler(self):
         """

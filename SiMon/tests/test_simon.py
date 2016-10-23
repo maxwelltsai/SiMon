@@ -2,8 +2,11 @@ from ..simon import SiMon
 import os
 import unittest
 
-class Test(unittest.TestCase):
-    def test_simon(self):
+
+# instance a simulation_task
+
+class TestSimon(unittest.TestCase):
+    def test_interactive_mode(self):
         # execute only if run as a script
         s = SiMon()
 
@@ -27,6 +30,10 @@ class Test(unittest.TestCase):
         # test choices requires id input
         self.selected_inst = 1  # test id
 
-        # for choice in ['s', 'd', 'k']  # TODO: 'r' 'x' mode has bugs now'
+        # for choice in ['s', 'n', 'r', 'c', 'x', 'd', 'k', 'b', 'p']:
+            # TODO: how to give an input here?
+            # s.task_handler(choice)
 
-        # s.interactive_mode()
+
+    def test_daemon_mode(self):
+        pass
