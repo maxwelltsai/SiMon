@@ -36,4 +36,6 @@ class TestSimon(unittest.TestCase):
 
 
     def test_daemon_mode(self):
-        pass
+        s = SiMon()
+        s.daemon_mode()
+        # TODO: start and stop does not effect?

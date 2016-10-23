@@ -5,6 +5,7 @@ import time
 from fnmatch import fnmatch
 
 from daemon import runner
+import logging
 
 from nbody6 import Nbody6
 from simulation_task import SimulationTask
