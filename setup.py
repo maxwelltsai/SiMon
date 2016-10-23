@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # name is the package name in pip, should be lower case and not conflict with existing packages
 # packages are code source
@@ -10,5 +10,6 @@ setup(name='astro_simon',
       author='Maxwell Cai, Penny Qian',
       author_email='pennyqxr@gmail.com',
       license='',
-      packages=['SiMon'],
-      zip_safe=False)
+      packages=find_packages(),
+      zip_safe=False,
+      install_requires=['python-daemon'])
