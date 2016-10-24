@@ -11,8 +11,7 @@ from nbody6 import Nbody6
 from simulation_task import SimulationTask
 
 # TODO: move the configuration to a text file called 'SiMon.conf'. Parse the config file with regex.
-sim_dir = '/Users/penny/Works/simon_project/nbody6/Ncode/run'  # Global configurations
-# sim_dir = '/Users/maxwell/Works/nbody6/Ncode/run'
+from config import SIM_DIR
 
 
 class SiMon(object):
@@ -20,7 +19,7 @@ class SiMon(object):
     Main code of Simulation Monitor (SiMon).
     """
     def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
-                 mode='interactive', cwd=sim_dir):
+                 mode='interactive', cwd=SIM_DIR):
         """
         :param pidfile:
         """
