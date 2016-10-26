@@ -1,7 +1,7 @@
 from ..simon import SiMon
 import os
 import unittest
-
+import subprocess
 
 # instance a simulation_task
 
@@ -37,5 +37,9 @@ class TestSimon(unittest.TestCase):
 
     def test_daemon_mode(self):
         s = SiMon()
-        s.daemon_mode()
+        # TODO: OSError: [Errno 8] Exec format error
+        # http://stackoverflow.com/questions/27606653/oserror-errno-8-exec-format-error
+        test_dir = os.path.join(os.path.dirname(__file__), 'test.sh')
+        print('test dir', test_dir)
+        subprocess.call([test_dir])
         # TODO: start and stop does not effect?
