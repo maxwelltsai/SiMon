@@ -165,7 +165,7 @@ class SimulationTask(object):
         return 0
 
     @abc.abstractmethod
-    def sim_shell_exec(self, shell_command):
+    def sim_shell_exec(self, shell_command=None):
         """
         Execute a shell command under the data directory of the simulation.
         :param shell_command: the shell command to execute
