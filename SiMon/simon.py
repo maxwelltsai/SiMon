@@ -2,6 +2,7 @@ import os
 import os.path
 import sys
 import time
+import logging
 from fnmatch import fnmatch
 
 from daemon import runner
@@ -24,15 +25,11 @@ class SiMon(object):
         :param pidfile:
         """
         self.selected_inst = []  # A list of the IDs of selected simulation instances
-        # self.id_dict = []  # get the full path by ID
-        # self.id_dict_short = []  # get the name of the simulation directory by ID
         self.sim_inst_dict = dict()  # the container of all SimulationTask objects (ID to object mapping)
         self.sim_inst_parent_dict = dict()  # given the current path, find out the instance of the parent
-        # self.sim_tree = SimulationTask(0, 'root', cwd, 'STOP')
 
         # TODO: create subclass instance according to the config file
         self.sim_tree = Nbody6(0, 'root', cwd, 'STOP')
-        self.status_dict = None
         self.stdin_path = stdin
         self.stdout_path = stdout
         self.stderr_path = stderr
@@ -125,7 +122,7 @@ class SiMon(object):
 
                     # TODO: add error type detection to sim_inst.sim_check_status()
                     # sim_inst.errortype = self.check_instance_error_type(id)
-                    self.sim_inst_dict[sim_inst.parent_id].status = sim_inst
+                    self.sim_inst_dict[sim_inst.parent_id].status = sim_inst.status
 
                     if sim_inst.t_max_extended > self.sim_inst_dict[sim_inst.parent_id].t_max_extended and \
                             not os.path.isfile(os.path.join(sim_inst.fulldir, 'NORESTART')):
@@ -142,20 +139,15 @@ class SiMon(object):
         :type: None
         """
         os.chdir(self.cwd)
-        # self.id_dict = dict()
-        # self.id_dict_short = dict()
         self.sim_inst_dict = dict()
-        # self.sim_inst_parent_dict = dict()
-        # self.status_dict = dict()
 
         # TODO: create subclass instance according to the config file
         self.sim_tree = Nbody6(0, 'root', self.cwd, 'STOP')  # initially only the root node
         self.sim_inst_dict[0] = self.sim_tree  # map ID=0 to the root node
         self.sim_inst_parent_dict[self.cwd.strip()] = self.sim_tree  # map the current dir to be the sim tree root
-        # id_list, id_list_short = self.traverse_dir()
         self.inst_id = 0
-        # self.status_dict = dict()
         os.path.walk(self.cwd, self.traverse_simulation_dir_tree, '*')
+
         # Synchronize the status tree
         update_needed = True
         iter = 0
@@ -185,7 +177,6 @@ class SiMon(object):
         :return: start and stop time
         :rtype: int
         """
-        # self.build_simulation_tree()
         print(self.sim_inst_dict[sim_id])  # print the root node will cause the whole tree to be printed
         return self.sim_inst_dict[sim_id].t_min, self.sim_inst_dict[sim_id].t_max
 
@@ -315,15 +306,11 @@ class SiMon(object):
             except Exception:
                 sfile.close()
         print 'The following simulations scheudled: '+str(schedule_list)
-        for i in self.status_dict.keys():
+        for i in self.sim_inst_dict.keys():
             if i == 0: # the root group, skip
                 continue
             sim = self.sim_inst_dict[i]
-            # status = sim.status
-            # self.status_dict[i] = status
-            # d_name = self.id_dict[i]
-            # d_name_short = self.id_dict_short[i]
-            print 'Checking instance #%d ==> %s' % (i, d_name)
+            print 'Checking instance #%d ==> %s' % (i, sim.name)
             if 'RUN' in sim.status:
                 if 'HANG' in sim.status:
                     sim.sim_kill()

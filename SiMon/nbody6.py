@@ -335,7 +335,7 @@ class Nbody6(SimulationTask):
             restart_file_text = '4 10000000.0\n0.02 0.02 0.02 0.0 0.0 0\n30000 0 0\n30000 0 0'
         return restart_file_text
 
-    def sim_shell_exec(self, shell_command):
+    def sim_shell_exec(self, shell_command=None):
         """
         Allow the user to execute a UNIX command in the directory of the currently active simulation instance.
         """
