@@ -8,29 +8,32 @@ import numpy as np
 import time
 import signal
 
+__simulation__ = 'Nbody6'  # should be the same as the class name
+
 
 class Nbody6(SimulationTask):
     """
     Implementation for NBODY6 (Aarseth).
     """
 
-    def __init__(self, id, name, fulldir, status, mode='daemon', t_min=0, t_max=0, restarts=None):
-        super(Nbody6, self).__init__(id, name, fulldir, status, mode, t_min, t_max, restarts)
+
+    def __init__(self, sim_id, name, full_dir, status, mode='daemon', t_min=0, t_max=0, restarts=None):
+        super(Nbody6, self).__init__(sim_id, name, full_dir, status, mode, t_min, t_max, restarts)
         self.t_min, self.t_max = self.sim_get_status()
 
     def sim_start(self):
         """
         Start a new Nbody6 simulation,
         """
-        sys.stdout.write("Starting %s\n" % self.fulldir)
+        sys.stdout.write("Starting %s\n" % self.full_dir)
         # for each instance processing, there is a process.pid file, which contains a number
         # later process.pid will be overwrote or created by run.sh - os.system('sh run.sh')
         #
         # late line on run.sh:
         # ../../nbody6 < input 1>output.log 2>output.err  & echo $! > process.pid
-        if os.path.isfile(os.path.join(self.fulldir, 'process.pid')):
+        if os.path.isfile(os.path.join(self.full_dir, 'process.pid')):
             try:
-                fpid = open(os.path.join(self.fulldir, 'process.pid'), 'r')
+                fpid = open(os.path.join(self.full_dir, 'process.pid'), 'r')
                 pid = int(fpid.readline())
                 fpid.close()
                 if pid > 0:
@@ -38,7 +41,7 @@ class Nbody6(SimulationTask):
                     sys.stdout.write('WARNING: the instance is already running. Will not start new run.\n')
                     return
             except (ValueError, OSError):  # the instance is not running, can start a new instance
-                os.chdir(self.fulldir)
+                os.chdir(self.full_dir)
                 # scan and remove any previous restarting dirs
 
                 # a restart dir is created for restoring new restart result, without overwirte previous ones
@@ -49,7 +52,7 @@ class Nbody6(SimulationTask):
                 os.system('sh run.sh')
                 os.chdir('..')
         else:
-            os.chdir(self.fulldir)
+            os.chdir(self.full_dir)
             # scan and remove any previous restarting dirs
             restart_dir = glob.glob('restart*/')
             for r_dir in restart_dir:
@@ -67,8 +70,8 @@ class Nbody6(SimulationTask):
         errortype = ''
 
         # check output log for error type info
-        if os.path.isfile(os.path.join(self.fulldir, 'output.log')):
-            flog = open(os.path.join(self.fulldir, 'output.log'), 'r')
+        if os.path.isfile(os.path.join(self.full_dir, 'output.log')):
+            flog = open(os.path.join(self.full_dir, 'output.log'), 'r')
             line = flog.readline()
             regex_small_step = re.compile('SMALL STEP')
             regex_halt = re.compile('CALCULATIONS HALTED')
@@ -87,7 +90,7 @@ class Nbody6(SimulationTask):
 
             # if cannot find anything from output.log, try to find from output.err (output the last line)
             if errortype == '':
-                ferr = open(os.path.join(self.fulldir, 'output.err'), 'r')
+                ferr = open(os.path.join(self.full_dir, 'output.err'), 'r')
                 line = ferr.readline()
                 last_line = line
                 while line != '':
@@ -114,9 +117,9 @@ class Nbody6(SimulationTask):
         time step parameters accordingly and then restart the code.
         """
         hanged = False
-        if os.path.isfile(os.path.join(self.fulldir, 'process.pid')):
+        if os.path.isfile(os.path.join(self.full_dir, 'process.pid')):
             try:
-                fpid = open(os.path.join(self.fulldir, 'process.pid'), 'r')
+                fpid = open(os.path.join(self.full_dir, 'process.pid'), 'r')
                 pid = 0
                 try:
                     pid = int(fpid.readline())
@@ -127,8 +130,8 @@ class Nbody6(SimulationTask):
                     os.kill(pid, 0)  # test if process exist
 
                 # Exist, then test the file activity
-                if os.path.isfile(os.path.join(self.fulldir, 'output.log')):
-                    mtime = os.stat(os.path.join(self.fulldir, 'output.log')).st_mtime
+                if os.path.isfile(os.path.join(self.full_dir, 'output.log')):
+                    mtime = os.stat(os.path.join(self.full_dir, 'output.log')).st_mtime
                     if time.time()-mtime<7200:
                         hanged = False
                     else:
@@ -157,8 +160,8 @@ class Nbody6(SimulationTask):
         t_list = []
         try:
             # TODO: remove mtime?
-            mtime = os.stat(os.path.join(self.fulldir, 'output.log')).st_mtime
-            flog = open(os.path.join(self.fulldir, 'output.log'))
+            mtime = os.stat(os.path.join(self.full_dir, 'output.log')).st_mtime
+            flog = open(os.path.join(self.full_dir, 'output.log'))
             regex = re.compile('^ T = +([^,]\d+)')
             line = flog.readline()
             while line != '':
@@ -190,14 +193,14 @@ class Nbody6(SimulationTask):
                 return 1
         else:
             # TODO: code will not goes here because no functions in daemon mode will call inst_delete
-            shutil.rmtree(self.fulldir)
+            shutil.rmtree(self.full_dir)
             return 0
 
     def sim_backup_checkpoint(self):
         # min and max T
         t_min, t_max = self.sim_get_status()
         original_dir = os.getcwd()
-        os.chdir(self.fulldir)
+        os.chdir(self.full_dir)
         restart_file_list = glob.glob('restart.tmp.*')
         need_backup = True
 
@@ -242,7 +245,7 @@ class Nbody6(SimulationTask):
         """
         # Retrieve a list of restart files
         original_dir = os.getcwd()
-        os.chdir(self.fulldir)
+        os.chdir(self.full_dir)
         rfiles = glob.glob('restart.tmp.*')  # * here stands for time
         os.chdir(original_dir)
 
@@ -254,7 +257,7 @@ class Nbody6(SimulationTask):
             rfile_list = sorted(rfiles)
 
         # Retrieve a list of restart directories
-        rdir_list = glob.glob(os.path.join(self.fulldir, 'restart*/'))
+        rdir_list = glob.glob(os.path.join(self.full_dir, 'restart*/'))
 
         '''
         nbody will generate some restart.tmp, overwrote every 2 min
@@ -272,18 +275,18 @@ class Nbody6(SimulationTask):
         # len(rfile_list) : how many restart tmp files -> running time
         if len(rfile_list) > len(rdir_list):
             restart_dir_name = 'restart' + str(len(rdir_list) + 1)
-            restart_file_name = os.path.join(self.fulldir, rfile_list[len(rfile_list) - 1 - len(rdir_list)])
+            restart_file_name = os.path.join(self.full_dir, rfile_list[len(rfile_list) - 1 - len(rdir_list)])
             sys.stdout.write('The file %s will be used for restart.\n' % restart_file_name)
         else:
-            sys.stderr.write('ERROR [SEVERE]: unable to proceed the simulation %s\n' % self.fulldir)
-            fnorestart = open(os.path.join(self.fulldir, 'NORESTART'), 'w')
+            sys.stderr.write('ERROR [SEVERE]: unable to proceed the simulation %s\n' % self.full_dir)
+            fnorestart = open(os.path.join(self.full_dir, 'NORESTART'), 'w')
             fnorestart.write('NORESTART')
             fnorestart.close()
             return
 
         # check error type to restart accordingly
         errortype = self.check_instance_error_type()
-        os.chdir(self.fulldir)
+        os.chdir(self.full_dir)
         os.mkdir(restart_dir_name)  # restart 1 , 2, 3 ...
 
         # restart.dat: latest of restart.tmp in nbody code
@@ -297,7 +300,7 @@ class Nbody6(SimulationTask):
             shutil.copyfile('restart.sh', os.path.join(restart_dir_name, 'run.sh'))
         else:
             f_restart = open(os.path.join(restart_dir_name, 'run.sh'), 'w')
-            d_name = self.fulldir
+            d_name = self.full_dir
             # TODO: ignore pot_type
             pot_type = ''
             if 'pm' in d_name:
@@ -342,12 +345,12 @@ class Nbody6(SimulationTask):
         if shell_command is None:
             shell_command = raw_input('CMD>> ')
         sys.stdout.write('========== Command on #%d ==> %s (PWD=%s) ==========\n'
-                         % (self.id, self.fulldir, self.fulldir))
+                         % (self.id, self.full_dir, self.full_dir))
         original_dir = os.getcwd()
-        os.chdir(self.fulldir)
+        os.chdir(self.full_dir)
         os.system(shell_command)
         sys.stdout.write('========== [DONE] Command on #%d ==> %s (PWD=%s) ==========\n'
-                         % (self.id, self.fulldir, self.fulldir))
+                         % (self.id, self.full_dir, self.full_dir))
         os.chdir(original_dir)
         return 0
 
@@ -358,8 +361,8 @@ class Nbody6(SimulationTask):
         """
         Kill the UNIX process of a simulation.
         """
-        if os.path.isfile(os.path.join(self.fulldir, 'process.pid')):
-            fpid = open(os.path.join(self.fulldir, 'process.pid'), 'r')
+        if os.path.isfile(os.path.join(self.full_dir, 'process.pid')):
+            fpid = open(os.path.join(self.full_dir, 'process.pid'), 'r')
             pid = 0
             try:
                 pid = int(fpid.readline())
@@ -380,8 +383,8 @@ class Nbody6(SimulationTask):
             sys.stdout.write('Unable to kill instance #%d: unable to determine pid.\n' % self.id)
 
     def sim_collect_recent_output_message(self, lines=20):
-        sys.stdout.write('========== Diagnose for #%d ==> %s ==========\n' % (self.id, self.fulldir))
-        check_dir_name = self.fulldir
+        sys.stdout.write('========== Diagnose for #%d ==> %s ==========\n' % (self.id, self.full_dir))
+        check_dir_name = self.full_dir
         original_dir = os.getcwd()
         os.chdir(check_dir_name)
         os.system('\ncat input')

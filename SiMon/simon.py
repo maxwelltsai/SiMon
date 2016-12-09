@@ -3,16 +3,19 @@ import os.path
 import sys
 import time
 import logging
+import glob
+
+import datetime
+import numpy
+try:
+    import configparser as cp  # Python 3 only
+except ImportError:
+    import ConfigParser as cp  # Python 2 only
 from fnmatch import fnmatch
-
 from daemon import runner
-import logging
-
-from nbody6 import Nbody6
 from simulation_task import SimulationTask
 
-# TODO: move the configuration to a text file called 'SiMon.conf'. Parse the config file with regex.
-from config import SIM_DIR
+__simon_dir__ = os.path.dirname(os.path.abspath(__file__))
 
 
 class SiMon(object):
@@ -20,16 +23,34 @@ class SiMon(object):
     Main code of Simulation Monitor (SiMon).
     """
     def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
-                 mode='interactive', cwd=SIM_DIR):
+                 mode='interactive', cwd=None, config_file='SiMon.conf'):
         """
         :param pidfile:
         """
+
+        # Only needed in interactive mode
+        self.config = self.parse_config_file(config_file)
+        if self.config is None:
+            print('Error: Configure file SiMon.conf does not exist.')
+            sys.exit(-1)
+        else:
+            try:
+                cwd = self.config.get('SiMon', 'Root_dir')
+            except cp.NoOptionError:
+                print('Item Root_dir is missing in configure file SiMon.conf. SiMon cannot start. Exiting...')
+                sys.exit(-1)
+        if not os.path.isdir(cwd):
+            print('Simulation root directory %s does not exist. Existing...' % cwd)
+            sys.exit(-1)
+
+        self.module_dict = self.register_modules()
+
         self.selected_inst = []  # A list of the IDs of selected simulation instances
         self.sim_inst_dict = dict()  # the container of all SimulationTask objects (ID to object mapping)
         self.sim_inst_parent_dict = dict()  # given the current path, find out the instance of the parent
 
         # TODO: create subclass instance according to the config file
-        self.sim_tree = Nbody6(0, 'root', cwd, 'STOP')
+        self.sim_tree = SimulationTask(0, 'root', cwd, 'STOP')
         self.stdin_path = stdin
         self.stdout_path = stdout
         self.stderr_path = stderr
@@ -39,7 +60,12 @@ class SiMon(object):
         self.cwd = cwd
         self.inst_id = 0
         self.tcrit = 100
+        self.logger = None
         self.max_concurrent_jobs = 2
+
+        if self.config.has_option('SiMon', 'Max_concurrent_jobs'):
+            self.max_concurrent_jobs = self.config.getint('SiMon', 'Max_concurrent_jobs')
+
         os.chdir(cwd)
 
     @staticmethod
@@ -54,6 +80,42 @@ class SiMon(object):
                 confirmed = True
                 return map(int, ids)
 
+    @staticmethod
+    def parse_config_file(config_file):
+        """
+        Parse the configure file (SiMon.conf) for starting SiMon. The basic information of Simulation root directory
+        must exist in the configure file before SiMon can start. A minimum configure file of SiMon looks like:
+
+        ==============================================
+        [SiMon]
+        Root_dir: <the_root_dir_of_the_simulation_data>
+        ==============================================
+
+        :return: return 0 if succeed, -1 if failed (file not exist, and cannot be created). If the file does not exist
+        but a new file with default values is created, the method returns 1.
+        """
+        conf = cp.ConfigParser()
+        if os.path.isfile(config_file):
+            conf.read(config_file)
+            return conf
+        else:
+            return None
+
+    @staticmethod
+    def register_modules():
+        """
+        Register modules
+        :return: A dict-like mapping between the name of the code and the filename of the module.
+        """
+        mod_dict = dict()
+        module_candidates = glob.glob('module_*.py')
+        for mod_name in module_candidates:
+            mod = __import__(mod_name.split('.')[0])
+            if hasattr(mod, '__simulation__'):
+                # it is a valid SiMon module
+                mod_dict[mod.__simulation__] = mod_name.split('.')[0]
+        return mod_dict
+
     def traverse_simulation_dir_tree(self, pattern, base_dir, files):
         """
         Traverse the simulation file structure tree (Breadth-first search), until the leaf (i.e. no restart directory)
@@ -66,8 +128,20 @@ class SiMon(object):
                     self.inst_id += 1
                     id = self.inst_id
 
+                    # Try to determine the simulation code type by reading the config file
+                    sim_config = self.parse_config_file(os.path.join(fullpath, 'SiMon.conf'))
+                    sim_inst = None
+                    if sim_config is not None:
+                        try:
+                            code_name = sim_config.get('Simulation', 'Code_name')
+
+                            if code_name in self.module_dict:
+                                sim_inst_mod = __import__(self.module_dict[code_name])
+                                sim_inst = getattr(sim_inst_mod, code_name)(id, filename, fullpath, 'STOP')
+                        except cp.NoOptionError:
+                            pass
                     # TODO: create subclass instance according to the config file
-                    sim_inst = Nbody6(id, filename, fullpath, 'STOP')
+                    # sim_inst = Nbody6(id, filename, fullpath, 'STOP')
                     self.sim_inst_dict[id] = sim_inst
                     sim_inst.id = id
                     sim_inst.fulldir = fullpath
@@ -81,7 +155,7 @@ class SiMon(object):
                     sim_inst.parent_id = self.sim_inst_parent_dict[base_dir].id
 
                     # Get simulation status
-                    print fullpath
+                    """
                     try:
                         sim_inst.mtime = os.stat(os.path.join(fullpath, 'output.log')).st_mtime
                         # sim_inst.t_min, sim_inst.t_max = self.print_sim_status_overview(sim_inst.id)
@@ -89,33 +163,36 @@ class SiMon(object):
                             sim_inst.t_max_extended = sim_inst.t_max
                     except OSError:
                         mtime = 'NaN'
-                        sim_inst.t_min = 0
-                        sim_inst.t_max = 0
                     try:
                         sim_inst.ctime = os.stat(os.path.join(fullpath, 'start_time')).st_ctime
                     except OSError:
                         ctime = 'NaN'
+                    """
                     try:
-                        if os.path.isfile(os.path.join(fullpath, 'process.pid')):
-                            fpid = open(os.path.join(fullpath, 'process.pid'),'r')
-                            pid = 0
-                            pid = int(fpid.readline())
+                        if sim_config.has_option('Simulation', 'PID'):
+                            pid = sim_config.getint('Simulation', 'PID')
                             try:
                                 if pid > 0:
                                     os.kill(pid, 0)
-                                    sim_inst.status = 'RUN [%d]' % (pid)
+                                    sim_inst.status = 'RUN [%d]' % pid
+                                    hang_time = 120
+                                    if sim_config.has_option('Simulation', 'Hang_time'):
+                                        hang_time = sim_config.getfloat('Simulation', 'Hang_time')
+                                    if time.time() - sim_inst.mtime > hang_time:
+                                        sim_inst.status = 'RUN/HANG [%d]' % pid
                             except (ValueError, OSError, Exception), e:
                                 sim_inst.status = 'STOP'
-                            fpid.close()
-                        else: # process not running or pid file not exist
-                            if time.time()-sim_inst.mtime<120: sim_inst.status = 'RUN'
-                            else: sim_inst.status = 'STOP'
+                        else:  # process not running or pid file not exist
+                            if time.time()-sim_inst.mtime < 120:
+                                sim_inst.status = 'RUN'
+                            else:
+                                sim_inst.status = 'STOP'
 
                         # TODO: add hung detection to sim_inst.sim_check_status()
                         # if self.check_instance_hanged(id) == True:
                         #     sim_inst.status += ' HANG'
 
-                        if self.tcrit - sim_inst.t_max < 100:
+                        if sim_inst.t >= sim_inst.t_max:
                             sim_inst.status = 'DONE'
                     except Exception:
                         sim_inst.status = 'NaN'
@@ -141,8 +218,7 @@ class SiMon(object):
         os.chdir(self.cwd)
         self.sim_inst_dict = dict()
 
-        # TODO: create subclass instance according to the config file
-        self.sim_tree = Nbody6(0, 'root', self.cwd, 'STOP')  # initially only the root node
+        self.sim_tree = SimulationTask(0, 'root', self.cwd, 'STOP')  # initially only the root node
         self.sim_inst_dict[0] = self.sim_tree  # map ID=0 to the root node
         self.sim_inst_parent_dict[self.cwd.strip()] = self.sim_tree  # map the current dir to be the sim tree root
         self.inst_id = 0
@@ -211,20 +287,6 @@ class SiMon(object):
         Handles the task selection input from the user (in the interactive mode).
 
         :param opt: The option from user input.
-
-        Note::
-        -----
-        List Instances (L)
-        Select Instance (S)
-        New Run (N) # start new simulations
-        Restart (R) # restart simulation
-        Check status (C) # check the recent or current status of the simulation and print it
-        Execute (X)  # execute an UNIX shell command in the simulation directory
-        Delete Instance (D) # delete the simulation tree and all its data
-        Kill Instance (K) # kill the UNIX process associate with a simulation task
-        Backup Restart File (B)  # backup the simulation checkpoint files (for restarting purpose in the future)
-        Post Processing (P) # perform (post)-processing (usually after the simulation is done), what is post-processing?
-        Quit (Q)
         """
 
         if opt == 'q':  # quit interactive mode
@@ -239,29 +301,54 @@ class SiMon(object):
                     sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
 
         # TODO: use message? to rewrite this part in a smarter way
-        for sid in self.selected_inst:
-            if sid in self.sim_inst_dict:
-                if opt == 'n':
+        if opt == 'n':  # start new simulations
+            for sid in self.selected_inst:
+                if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_start()
-                if opt == 'r':
+                else:
+                    print('The selected simulation with ID = %d does not exist. Simulation not started.\n' % sid)
+        if opt == 'r':  # restart simulations
+            for sid in self.selected_inst:
+                if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_restart()
-                if opt == 'c':
+                else:
+                    print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
+        if opt == 'c':  # check the recent or current status of the simulation and print it
+            for sid in self.selected_inst:
+                if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_collect_recent_output_message()
-                if opt == 'x':
+                else:
+                    print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
+        if opt == 'x':  # execute an UNIX shell command in the simulation directory
+            for sid in self.selected_inst:
+                if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_shell_exec()
-                if opt == 'd':
+                else:
+                    print('The selected simulation with ID = %d does not exist. Cannot execute command.\n' % sid)
+        if opt == 'd':  # delete the simulation tree and all its data
+            for sid in self.selected_inst:
+                if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_delete()
-                if opt == 'k':
+                else:
+                    print('The selected simulation with ID = %d does not exist. Cannot delete simulation.\n' % sid)
+        if opt == 'k':  # kill the UNIX process associate with a simulation task
+            for sid in self.selected_inst:
+                if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_kill()
-                if opt == 'b':
+                else:
+                    print('The selected simulation with ID = %d does not exist. Cannot kill simulation.\n' % sid)
+        if opt == 'b':  # backup the simulation checkpoint files (for restarting purpose in the future)
+            for sid in self.selected_inst:
+                if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_backup_checkpoint()
-                if opt == 'p':
-                    # for inst_id in self.selected_inst:
-                    #     self.convert_out3_to_hdf5(int(inst_id))
+                else:
+                    print('The selected simulation with ID = %d does not exist. Cannot backup checkpoint.\n' % sid)
+        if opt == 'p':  # perform (post)-processing (usually after the simulation is done)
+            for sid in self.selected_inst:
+                if sid in self.sim_inst_dict:
                     pass
-            else:
-                # TODO: add a dict for all options
-                print('The selected simulation with ID = %d does not exist. \n' % sid)
+                else:
+                    print('The selected simulation with ID = %d does not exist. Cannot perform postprocessing.\n' % sid)
 
     def auto_scheduler(self):
         """
@@ -275,42 +362,36 @@ class SiMon(object):
         os.chdir(self.cwd)
         self.build_simulation_tree()
         schedule_list = []
+        # Sort jobs according to priority (niceness)
+        sim_niceness_vec = []
         concurrent_jobs = 0
         for i in self.sim_inst_dict.keys():
             inst = self.sim_inst_dict[i]
+            sim_niceness_vec.append(inst.niceness)
+            # test if the process is running
             if 'RUN' in inst.status and inst.cid == -1:
-                if os.path.isfile(os.path.join(inst.fulldir, 'process.pid')):
-                    try:
-                        fpid = open(os.path.join(inst.fulldir, 'process.pid'), 'r')
-                        strpid = fpid.readline()
-                        fpid.close()
-                    except OSError:
-                        pass
+                if inst.config is not None and inst.config.has_option('Simulation', 'PID'):
+                    pid = inst.config.getint('Simulation', 'PID')
+                    strpid = str(pid)
                     if strpid.strip() in inst.status:
                         try:
-                            print 'Stripd = '+strpid
-                            os.kill(int(strpid), 0)
+                            os.kill(pid, 0)
                             concurrent_jobs += 1
                         except (OSError, ValueError), e:
                             pass
+                elif inst.config is None:
+                    print('WARNING: No config for this instance: %s' % inst.name)
+        index_niceness_sorted = numpy.argsort(sim_niceness_vec)
+        for ind in index_niceness_sorted:
+            if 'DONE' not in self.sim_inst_dict[ind].status and self.sim_inst_dict[ind].id > 0:
+                schedule_list.append(self.sim_inst_dict[ind])
+                print(self.sim_inst_dict[ind].name)
 
-        print os.path.join(os.getcwd(),'schedule.job')
-        if os.path.isfile(os.path.join(os.getcwd(),'schedule.job')):
-            sfile = open(os.path.join(os.getcwd(),'schedule.job'))
-            try:
-                buf = sfile.readline()
-                while buf != '':
-                    schedule_list.append(buf.strip())
-                    buf = sfile.readline()
-                sfile.close()
-            except Exception:
-                sfile.close()
-        print 'The following simulations scheudled: '+str(schedule_list)
-        for i in self.sim_inst_dict.keys():
-            if i == 0: # the root group, skip
+        for sim in schedule_list:
+            if sim.id == 0:  # the root group, skip
                 continue
-            sim = self.sim_inst_dict[i]
-            print 'Checking instance #%d ==> %s' % (i, sim.name)
+            sim.sim_get_status()  # update its status
+            print('Checking instance #%d ==> %s' % (sim.id, sim.name))
             if 'RUN' in sim.status:
                 if 'HANG' in sim.status:
                     sim.sim_kill()
@@ -318,15 +399,11 @@ class SiMon(object):
                 else:
                     sim.sim_backup_checkpoint()
             elif 'STOP' in sim.status:
-                print 'STOP detected: '+sim.fulldir+str(concurrent_jobs)+' '+str(sim.level)
-                # TODO: implement t_min, t_max by parsing config file, output file and input infile
-                # t_min, t_max = self.print_sim_status_overview()
-                t_min = 0
-                t_max = 100
-                if self.tcrit-t_max <= 100: # mark as finished
-                    self.sim_inst_dict[i].status = 'DONE'
+                print('STOP detected: '+sim.fulldir+'  '+str(concurrent_jobs))
+                if sim.t >= sim.t_max:  # mark as finished
+                    sim.status = 'DONE'
                 else:
-                    if t_max == 0 and sim.name in schedule_list and concurrent_jobs < self.max_concurrent_jobs:
+                    if sim.t == 0 and sim.name in schedule_list and concurrent_jobs < self.max_concurrent_jobs:
                         # Start new run
                         sim.sim_start()
                         concurrent_jobs += 1
@@ -334,11 +411,11 @@ class SiMon(object):
                     elif concurrent_jobs < self.max_concurrent_jobs and sim.level == 1:
                         # search only top level instance to find the restart candidate
                         # build restart path
-                        current_inst = self.sim_inst_dict[i]
+                        current_inst = sim
                         while current_inst.cid != -1:
                             current_inst = self.sim_inst_dict[current_inst.cid]
                         # restart the simulation instance at the leaf node
-                        print 'RESTART: #%d ==> %s' % (current_inst.id, current_inst.fulldir)
+                        print('RESTART: #%d ==> %s' % (current_inst.id, current_inst.fulldir))
                         current_inst.sim_restart()
                         concurrent_jobs += 1
 
@@ -349,11 +426,15 @@ class SiMon(object):
         os.chdir(self.cwd)
         self.build_simulation_tree()
         while True:
-            print('Auto scheduled\n')
+            # print('[%s] Auto scheduled' % datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+            self.logger.info('SiMon routine checking...')
             self.auto_scheduler()
             sys.stdout.flush()
             sys.stderr.flush()
-            time.sleep(300)
+            if self.config.has_option('SiMon', 'daemon_sleep_time'):
+                time.sleep(self.config.getfloat('SiMon', 'daemon_sleep_time'))
+            else:
+                time.sleep(180)
 
     def interactive_mode(self):
         """
@@ -370,7 +451,7 @@ class SiMon(object):
             self.task_handler(choice)
 
     @staticmethod
-    def daemon_mode():
+    def daemon_mode(simon_dir):
         """
         Run SiMon in the daemon mode.
 
@@ -378,15 +459,18 @@ class SiMon(object):
         if necessary.
         :return:
         """
-        app = SiMon(os.path.join(os.getcwd(), 'run_mgr_daemon.pid'), stdout=os.path.join(os.getcwd(), 'SiMon.out.txt'),
-                    stderr=os.path.join(os.getcwd(), 'SiMon.err.txt'), mode='daemon')
+        app = SiMon(pidfile=os.path.join(os.getcwd(), 'run_mgr_daemon.pid'),
+                    stdout=os.path.join(os.getcwd(), 'SiMon.out.txt'),
+                    stderr=os.path.join(os.getcwd(), 'SiMon.err.txt'),
+                    cwd=simon_dir,
+                    mode='daemon')
         # log system
-        logger = logging.getLogger("DaemonLog")
-        logger.setLevel(logging.INFO)
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        handler = logging.FileHandler("/tmp/SiMon.log")
+        app.logger = logging.getLogger("DaemonLog")
+        app.logger.setLevel(logging.INFO)
+        formatter = logging.Formatter("%(asctime)s - [%(levelname)s] - %(name)s - %(message)s")
+        handler = logging.FileHandler(os.path.join(simon_dir, 'SiMon.log'))
         handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        app.logger.addHandler(handler)
         # initialize the daemon runner
         daemon_runner = runner.DaemonRunner(app)
         # This ensures that the logger file handle does not get closed during daemonization
@@ -395,16 +479,17 @@ class SiMon(object):
 
 if __name__ == "__main__":
     # execute only if run as a script
-    s = SiMon()
     if len(sys.argv) == 1:
         print('Running SiMon in the interactive mode...')
+        s = SiMon()
         s.interactive_mode()
     elif len(sys.argv) > 1:
         if sys.argv[1] in ['start', 'stop']:
             # python daemon will handle these two arguments
-            s.daemon_mode()
+            SiMon.daemon_mode(os.getcwd())
         elif sys.argv[1] in ['interactive', 'i']:
+            s = SiMon()
             s.interactive_mode()
         else:
-            s.print_help()
+            SiMon.print_help()
             sys.exit(0)
