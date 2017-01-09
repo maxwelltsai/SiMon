@@ -1,7 +1,7 @@
 from ..simon import SiMon
 import os
 import unittest
-
+import subprocess
 
 # instance a simulation_task
 
@@ -36,6 +36,7 @@ class TestSimon(unittest.TestCase):
 
 
     def test_daemon_mode(self):
-        s = SiMon()
-        s.daemon_mode()
+        test_dir = os.path.join(os.path.dirname(__file__), 'test.sh')
+        print('test dir', test_dir)
+        subprocess.call([test_dir])
         # TODO: start and stop does not effect?
