@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 # packages are code source
 
 setup(name='astro_simon',
-      version='0.1',
+      version='0.2dev',
       description='A simulation monitor for astrophysical N-body simulations',
       url='https://github.com/maxwelltsai/SiMon',
       author='Maxwell Cai, Penny Qian',
