@@ -23,7 +23,7 @@ Or you can install the latest developer version from the git repository using:
 
     pip install https://github.com/maxwelltsai/SiMon/archive/master.zip
     
-# Using
+# Usage
 
 ### Generate a test simulation file (Optional)
 
@@ -41,9 +41,13 @@ Generate test file using `python icutil_pseudo_simulation.py`
 
 You could run SiMon as a daemon program for a collection of simulations as:
 
-    python simon start
+    python simon.py start
+    
+and stop SiMon by:
+
+    python simon.py stop
     
 Or check simulation status and control by manual through:
 
-    python simon interactive
+    python simon.py interactive
 
