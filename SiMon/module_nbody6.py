@@ -1,4 +1,4 @@
-from simulation_task import SimulationTask
+from module_common import SimulationTask
 import os
 import sys
 import re

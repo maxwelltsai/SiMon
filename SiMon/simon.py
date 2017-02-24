@@ -13,7 +13,7 @@ except ImportError:
     import ConfigParser as cp  # Python 2 only
 from fnmatch import fnmatch
 from daemon import runner
-from simulation_task import SimulationTask
+from module_common import SimulationTask
 
 __simon_dir__ = os.path.dirname(os.path.abspath(__file__))
 
@@ -22,6 +22,7 @@ class SiMon(object):
     """
     Main code of Simulation Monitor (SiMon).
     """
+
     def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
                  mode='interactive', cwd=None, config_file='SiMon.conf'):
         """
@@ -50,7 +51,7 @@ class SiMon(object):
         self.sim_inst_parent_dict = dict()  # given the current path, find out the instance of the parent
 
         # TODO: create subclass instance according to the config file
-        self.sim_tree = SimulationTask(0, 'root', cwd, 'STOP')
+        self.sim_tree = SimulationTask(0, 'root', cwd, SimulationTask.STATUS_NEW)
         self.stdin_path = stdin
         self.stdout_path = stdout
         self.stderr_path = stderr
@@ -137,11 +138,9 @@ class SiMon(object):
 
                             if code_name in self.module_dict:
                                 sim_inst_mod = __import__(self.module_dict[code_name])
-                                sim_inst = getattr(sim_inst_mod, code_name)(id, filename, fullpath, 'STOP')
+                                sim_inst = getattr(sim_inst_mod, code_name)(id, filename, fullpath, SimulationTask.STATUS_NEW)
                         except cp.NoOptionError:
                             pass
-                    # TODO: create subclass instance according to the config file
-                    # sim_inst = Nbody6(id, filename, fullpath, 'STOP')
                     self.sim_inst_dict[id] = sim_inst
                     sim_inst.id = id
                     sim_inst.fulldir = fullpath
@@ -155,47 +154,7 @@ class SiMon(object):
                     sim_inst.parent_id = self.sim_inst_parent_dict[base_dir].id
 
                     # Get simulation status
-                    """
-                    try:
-                        sim_inst.mtime = os.stat(os.path.join(fullpath, 'output.log')).st_mtime
-                        # sim_inst.t_min, sim_inst.t_max = self.print_sim_status_overview(sim_inst.id)
-                        if sim_inst.t_max > sim_inst.t_max_extended:
-                            sim_inst.t_max_extended = sim_inst.t_max
-                    except OSError:
-                        mtime = 'NaN'
-                    try:
-                        sim_inst.ctime = os.stat(os.path.join(fullpath, 'start_time')).st_ctime
-                    except OSError:
-                        ctime = 'NaN'
-                    """
-                    try:
-                        if sim_config.has_option('Simulation', 'PID'):
-                            pid = sim_config.getint('Simulation', 'PID')
-                            try:
-                                if pid > 0:
-                                    os.kill(pid, 0)
-                                    sim_inst.status = 'RUN [%d]' % pid
-                                    hang_time = 120
-                                    if sim_config.has_option('Simulation', 'Hang_time'):
-                                        hang_time = sim_config.getfloat('Simulation', 'Hang_time')
-                                    if time.time() - sim_inst.mtime > hang_time:
-                                        sim_inst.status = 'RUN/HANG [%d]' % pid
-                            except (ValueError, OSError, Exception), e:
-                                sim_inst.status = 'STOP'
-                        else:  # process not running or pid file not exist
-                            if time.time()-sim_inst.mtime < 120:
-                                sim_inst.status = 'RUN'
-                            else:
-                                sim_inst.status = 'STOP'
-
-                        # TODO: add hung detection to sim_inst.sim_check_status()
-                        # if self.check_instance_hanged(id) == True:
-                        #     sim_inst.status += ' HANG'
-
-                        if sim_inst.t >= sim_inst.t_max:
-                            sim_inst.status = 'DONE'
-                    except Exception:
-                        sim_inst.status = 'NaN'
+                    sim_inst.sim_get_status()
 
                     # TODO: add error type detection to sim_inst.sim_check_status()
                     # sim_inst.errortype = self.check_instance_error_type(id)
@@ -218,7 +177,7 @@ class SiMon(object):
         os.chdir(self.cwd)
         self.sim_inst_dict = dict()
 
-        self.sim_tree = SimulationTask(0, 'root', self.cwd, 'STOP')  # initially only the root node
+        self.sim_tree = SimulationTask(0, 'root', self.cwd, SimulationTask.STATUS_NEW)  # initially only the root node
         self.sim_inst_dict[0] = self.sim_tree  # map ID=0 to the root node
         self.sim_inst_parent_dict[self.cwd.strip()] = self.sim_tree  # map the current dir to be the sim tree root
         self.inst_id = 0
@@ -234,7 +193,7 @@ class SiMon(object):
                 if i == 0:
                     continue
                 inst = self.sim_inst_dict[i]
-                if 'RUN' in inst.status or 'DONE' in inst.status:
+                if inst.status == SimulationTask.STATUS_RUN or inst.status == SimulationTask.STATUS_DONE:
                     if inst.parent_id > 0 and self.sim_inst_dict[inst.parent_id].status != inst.status:
                         # propagate the status of children (restarted simulation) to parents' status
                         self.sim_inst_dict[inst.parent_id].status = inst.status
@@ -364,26 +323,20 @@ class SiMon(object):
         schedule_list = []
         # Sort jobs according to priority (niceness)
         sim_niceness_vec = []
+
+        # check how many simulations are running
         concurrent_jobs = 0
         for i in self.sim_inst_dict.keys():
             inst = self.sim_inst_dict[i]
             sim_niceness_vec.append(inst.niceness)
+            inst.sim_get_status()  # update its status
             # test if the process is running
-            if 'RUN' in inst.status and inst.cid == -1:
-                if inst.config is not None and inst.config.has_option('Simulation', 'PID'):
-                    pid = inst.config.getint('Simulation', 'PID')
-                    strpid = str(pid)
-                    if strpid.strip() in inst.status:
-                        try:
-                            os.kill(pid, 0)
-                            concurrent_jobs += 1
-                        except (OSError, ValueError), e:
-                            pass
-                elif inst.config is None:
-                    print('WARNING: No config for this instance: %s' % inst.name)
+            if inst.status == SimulationTask.STATUS_RUN and inst.cid == -1:
+                concurrent_jobs += 1
+
         index_niceness_sorted = numpy.argsort(sim_niceness_vec)
         for ind in index_niceness_sorted:
-            if 'DONE' not in self.sim_inst_dict[ind].status and self.sim_inst_dict[ind].id > 0:
+            if self.sim_inst_dict[ind].status != SimulationTask.STATUS_DONE and self.sim_inst_dict[ind].id > 0:
                 schedule_list.append(self.sim_inst_dict[ind])
                 print(self.sim_inst_dict[ind].name)
 
@@ -391,33 +344,33 @@ class SiMon(object):
             if sim.id == 0:  # the root group, skip
                 continue
             sim.sim_get_status()  # update its status
-            print('Checking instance #%d ==> %s' % (sim.id, sim.name))
-            if 'RUN' in sim.status:
-                if 'HANG' in sim.status:
-                    sim.sim_kill()
-                    self.build_simulation_tree()
-                else:
-                    sim.sim_backup_checkpoint()
-            elif 'STOP' in sim.status:
-                print('STOP detected: '+sim.fulldir+'  '+str(concurrent_jobs))
-                if sim.t >= sim.t_max:  # mark as finished
-                    sim.status = 'DONE'
-                else:
-                    if sim.t == 0 and sim.name in schedule_list and concurrent_jobs < self.max_concurrent_jobs:
-                        # Start new run
-                        sim.sim_start()
-                        concurrent_jobs += 1
+            print('Checking instance #%d ==> %s [%s]' % (sim.id, sim.name, sim.status))
+            if sim.status == SimulationTask.STATUS_RUN:
+                sim.sim_backup_checkpoint()
+            elif sim.status == SimulationTask.STATUS_STALL:
+                sim.sim_kill()
+                self.build_simulation_tree()
+            elif sim.status == SimulationTask.STATUS_STOP:
+                self.logger.warning('STOP detected: '+sim.fulldir+'  '+str(concurrent_jobs))
+                # check if there is available slot to restart the simulation
+                if concurrent_jobs < self.max_concurrent_jobs and sim.level == 1:
+                    # search only top level instance to find the restart candidate
+                    # build restart path
+                    current_inst = sim
+                    while current_inst.cid != -1:
+                        current_inst = self.sim_inst_dict[current_inst.cid]
+                    # restart the simulation instance at the leaf node
+                    print('RESTART: #%d ==> %s' % (current_inst.id, current_inst.fulldir))
+                    self.logger.info('RESTART: #%d ==> %s' % (current_inst.id, current_inst.fulldir))
+                    current_inst.sim_restart()
+                    concurrent_jobs += 1
+            elif sim.status == SimulationTask.STATUS_NEW:
+                # check if there is available slot to start the simulation
+                if concurrent_jobs < self.max_concurrent_jobs:
+                    # Start new run
+                    sim.sim_start()
+                    concurrent_jobs += 1
 
-                    elif concurrent_jobs < self.max_concurrent_jobs and sim.level == 1:
-                        # search only top level instance to find the restart candidate
-                        # build restart path
-                        current_inst = sim
-                        while current_inst.cid != -1:
-                            current_inst = self.sim_inst_dict[current_inst.cid]
-                        # restart the simulation instance at the leaf node
-                        print('RESTART: #%d ==> %s' % (current_inst.id, current_inst.fulldir))
-                        current_inst.sim_restart()
-                        concurrent_jobs += 1
 
     def run(self):
         """

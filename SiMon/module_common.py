@@ -5,9 +5,8 @@ import os
 import subprocess
 import signal
 import time
-
 import sys
-
+import re
 import shutil
 
 try:
@@ -33,6 +32,14 @@ class SimulationTask(object):
     again crashes. So SiMon creates '/sim1/restart1/restart1' in attempt to start from T=200.
 
     """
+    # Constants
+    STATUS_NEW = 0x0  # newly initialized simulation
+    STATUS_STOP = 0x1  # crashed simulation
+    STATUS_RUN = 0x2  # the simulation is running
+    STATUS_STALL = 0x3  # the simulation is running, but stalled
+    STATUS_DONE = 0x4  # the simulation has finished
+
+    STATUS_LABEL = ['NEW', 'STOP', 'RUN', 'STALL', 'DONE']
 
     __metaclass__ = abc.ABCMeta
 
@@ -90,7 +97,8 @@ class SimulationTask(object):
         mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%Y-%m-%d %H:%M:%S')
         info = "%s\t%s\t%s\n%s%s\tT=%g [%g-%g]\t%s\tLV=%d\tPR=%d\tCID=%d" % (repr(self.name), ctime_str,
                                                                                    mtime_str, placeholder_space,
-                                                                                   self.status, self.t, self.t_min,
+                                                                                   SimulationTask.STATUS_LABEL[self.status],
+                                                                                   self.t, self.t_min,
                                                                                    self.t_max, self.error_type,
                                                                                    self.level, self.niceness, self.cid)
         ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
@@ -178,6 +186,7 @@ class SimulationTask(object):
         start_script_template = '%s & echo $!>.process.pid'
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
+        print 'restarting simulation: ', self.full_dir
         # Test if the process is running
         if self.config.has_option('Simulation', 'PID'):
             # It is also possible that the self.proc object is None, because it is created by another process
@@ -191,6 +200,7 @@ class SimulationTask(object):
         # If the process is not started yet, then start it in a normal way
         if self.config.has_option('Simulation', 'Restart_command'):
             start_cmd = self.config.get('Simulation', 'Restart_command')
+            print 'restart command:', start_cmd
             # self.proc = subprocess.Popen(start_cmd, shell=True)
             os.system(start_script_template % start_cmd)
             # sleep for a little while to make sure that the pid file exist
@@ -206,6 +216,28 @@ class SimulationTask(object):
         os.chdir(orig_dir)
         return 0
 
+    def sim_get_model_time(self):
+        """
+        Get the model time of the simulation.
+
+        Because different codes have different output formats, there is no generic way to obtain the model
+        time. The user is required to implement this method to properly obtain the time.
+
+        :return: the current model time
+        """
+        orig_dir = os.getcwd()
+        os.chdir(self.full_dir)
+        if self.config.has_option('Simulation', 'Output_file'):
+            output_file = self.config.get('Simulation', 'Output_file')
+            regex = re.compile('\\d+')
+            if os.path.isfile(output_file):
+                last_line = subprocess.check_output(['tail', '-1', output_file])
+                res = regex.findall(last_line)
+                if len(res) > 0:
+                    self.t = float(res[0])
+        os.chdir(orig_dir)
+        return self.t
+
     def sim_get_status(self):
         """
         Get the current status of the simulation. Update the config file if necessary.
@@ -216,16 +248,36 @@ class SimulationTask(object):
             return None
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
+        self.t = self.sim_get_model_time()
         if self.config.has_option('Simulation', 'Output_file'):
             output_file = self.config.get('Simulation', 'Output_file')
             if os.path.isfile(output_file):
                 self.mtime = os.stat(output_file).st_mtime
         if self.config.has_option('Simulation', 'Timestamp_started'):
             self.ctime = self.config.getfloat('Simulation', 'Timestamp_started')
-
-        # NOTE: this generic function cannot get the current model time. Users should override this function to get
-        #       the actual model time!
-        return dict()
+        if self.config.has_option('Simulation', 'PID'):
+            pid = self.config.getint('Simulation', 'PID')
+            strpid = str(pid)
+            try:
+                os.kill(pid, 0)
+                # it is running. Check if stalled.
+                stall_time = 300.0  # after 300s if the code doesn't advance, it is considered stalled
+                if self.config.has_option('Simulation', 'Stall_time'):
+                    stall_time = self.config.getfloat('Simulation', 'Stall_time')
+                if time.time() - self.mtime > stall_time:
+                    self.status = SimulationTask.STATUS_STALL
+                else:
+                    self.status = SimulationTask.STATUS_RUN
+            except (OSError, ValueError), e:
+                # The process is not running, check if stopped or done
+                if self.t >= self.t_max:
+                    self.status = SimulationTask.STATUS_DONE
+                else:
+                    if self.ctime == 0.0:
+                        self.status = SimulationTask.STATUS_NEW
+                    else:
+                        self.status = SimulationTask.STATUS_STOP
+        return self.status
 
     def sim_kill(self):
         """
