@@ -11,4 +11,47 @@
 * When the total number of simulations exceeds the capacity of machine concurrency, automatically schedule the next simulation when the current simulation is finished.
 * Detect and kill hung simulations (simulations that utilize 100% CPU/GPU but do not make any progress for a long period of time)
 
-Currently, SiMon supports only the NBODY6 direct N-body code. More generic supports to be expected soon.
+**SiMon** is highly modular. Arbitrary N-body codes can be supported by **SiMon** by overriding `module_common.py`.
+
+# Installation
+
+To install the latest stable version of **SiMon**, you can do
+
+    pip install astro_simon
+    
+Or you can install the latest developer version from the git repository using:
+
+    pip install https://github.com/maxwelltsai/SiMon/archive/master.zip
+    
+# Usage
+
+### Generate a test simulation file (Optional)
+
+Open `/SiMon/SiMon.conf` and edit the dir from: 
+
+    Root_dir: /Volumes/RamDisk/sim
+    
+To any directory where can store the test file, eg. `~/SiMon/test_pseudo_simu`
+
+Then, change the `sim_root_dir` in `icutil_pseudo_simulation.py` to dir the same as above.
+
+Generate test file using `python icutil_pseudo_simulation.py`
+
+### Start the SiMon Daemon
+
+You could run SiMon as a daemon program for a collection of simulations as:
+
+    python simon start
+    
+
+### Stop the SiMon Daemon
+
+You could run SiMon as a daemon program for a collection of simulations as:
+
+    python simon stop
+    
+### Interactive mode
+Check simulation status and control the simulations manually:
+
+    python simon [interactive]
+
