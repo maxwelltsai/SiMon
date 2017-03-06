@@ -3,6 +3,7 @@ import re
 import os
 import subprocess
 import time
+import glob
 
 __simulation__ = 'LonelyPlanets'
 
@@ -26,3 +27,13 @@ class LonelyPlanets(SimulationTask):
                     self.t = float(res[0])
         os.chdir(orig_dir)
         return self.t
+
+    def sim_get_status(self):
+        super(LonelyPlanets, self).sim_get_status()
+        orig_dir = os.getcwd()
+        os.chdir(self.full_dir)
+        h5_list = glob.glob('*.hdf5')
+        if len(h5_list) > 0:
+            self.status = SimulationTask.STATUS_DONE
+        os.chdir(orig_dir)
+

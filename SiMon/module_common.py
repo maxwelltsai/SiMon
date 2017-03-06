@@ -257,26 +257,29 @@ class SimulationTask(object):
             self.ctime = self.config.getfloat('Simulation', 'Timestamp_started')
         if self.config.has_option('Simulation', 'PID'):
             pid = self.config.getint('Simulation', 'PID')
-            strpid = str(pid)
-            try:
-                os.kill(pid, 0)
-                # it is running. Check if stalled.
-                stall_time = 300.0  # after 300s if the code doesn't advance, it is considered stalled
-                if self.config.has_option('Simulation', 'Stall_time'):
-                    stall_time = self.config.getfloat('Simulation', 'Stall_time')
-                if time.time() - self.mtime > stall_time:
-                    self.status = SimulationTask.STATUS_STALL
-                else:
-                    self.status = SimulationTask.STATUS_RUN
-            except (OSError, ValueError), e:
-                # The process is not running, check if stopped or done
-                if self.t >= self.t_max:
-                    self.status = SimulationTask.STATUS_DONE
-                else:
-                    if self.ctime == 0.0:
-                        self.status = SimulationTask.STATUS_NEW
+            if pid == 0 and self.mtime == 0:
+                self.status = SimulationTask.STATUS_NEW
+            else:
+                strpid = str(pid)
+                try:
+                    os.kill(pid, 0)
+                    # it is running. Check if stalled.
+                    stall_time = 300.0  # after 300s if the code doesn't advance, it is considered stalled
+                    if self.config.has_option('Simulation', 'Stall_time'):
+                        stall_time = self.config.getfloat('Simulation', 'Stall_time')
+                    if time.time() - self.mtime > stall_time:
+                        self.status = SimulationTask.STATUS_STALL
                     else:
-                        self.status = SimulationTask.STATUS_STOP
+                        self.status = SimulationTask.STATUS_RUN
+                except (OSError, ValueError), e:
+                    # The process is not running, check if stopped or done
+                    if self.t >= self.t_max:
+                        self.status = SimulationTask.STATUS_DONE
+                    else:
+                        if self.ctime == 0.0:
+                            self.status = SimulationTask.STATUS_NEW
+                        else:
+                            self.status = SimulationTask.STATUS_STOP
         return self.status
 
     def sim_kill(self):
