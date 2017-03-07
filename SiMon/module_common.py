@@ -96,10 +96,9 @@ class SimulationTask(object):
         ctime_str = datetime.datetime.fromtimestamp(self.ctime).strftime('%Y-%m-%d %H:%M:%S')
         mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%Y-%m-%d %H:%M:%S')
 
-        info = "%s\t%s\t%s\n%s%s\tT=%g [%g-%g]\t" % (repr(self.name), ctime_str,
-                                                                                   mtime_str, placeholder_space,
-                                                                                   # SimulationTask.STATUS_LABEL[self.status],
-                                                                                   self.status,
+        info = "%s\t%s\n%s%s\tT=%g [%g-%g]\t" % (repr(self.name), mtime_str, placeholder_space,
+                                                                                   SimulationTask.STATUS_LABEL[self.status],
+                                                                                   # self.status,
                                                                                    self.t, self.t_min,
                                                                                    self.t_max)
         ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
