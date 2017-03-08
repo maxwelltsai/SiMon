@@ -88,7 +88,6 @@ class SiMon(object):
                             for j in subrange:
                                 vec_index_selected.append(j)
                 else:
-                    print token_i
                     vec_index_selected.append(token_i.strip())
             if raw_input('Your input is \n\t'+str(vec_index_selected)+', confirm? [Y/N] ').lower() == 'y':
                 confirmed = True
