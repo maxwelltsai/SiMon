@@ -83,10 +83,13 @@ class SiMon(object):
                 if '-' in token_i:  # it is a range
                     limits = token_i.split('-')
                     if len(limits) == 2:
-                        if int(limits[0]) < int(limits[1]):
-                            subrange = range(int(limits[0]), int(limits[1])+1)
+                        if int(limits[0].strip()) < int(limits[1].strip()):
+                            subrange = range(int(limits[0].strip()), int(limits[1].strip())+1)
                             for j in subrange:
                                 vec_index_selected.append(j)
+                else:
+                    print token_i
+                    vec_index_selected.append(token_i.strip())
             if raw_input('Your input is \n\t'+str(vec_index_selected)+', confirm? [Y/N] ').lower() == 'y':
                 confirmed = True
                 return map(int, vec_index_selected)
