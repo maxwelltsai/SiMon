@@ -41,17 +41,17 @@ Generate test file using `python icutil_pseudo_simulation.py`
 
 You could run SiMon as a daemon program for a collection of simulations as:
 
-    python simon start
+    python simon.py start
     
 
 ### Stop the SiMon Daemon
 
 You could run SiMon as a daemon program for a collection of simulations as:
 
-    python simon stop
+    python simon.py stop
     
 ### Interactive mode
 Check simulation status and control the simulations manually:
 
-    python simon [interactive]
+    python simon.py [interactive]
 
