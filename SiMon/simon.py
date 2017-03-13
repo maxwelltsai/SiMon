@@ -75,11 +75,23 @@ class SiMon(object):
         Prompt to the user to input the simulation ID (in the interactive mode)
         """
         confirmed = False
+        vec_index_selected = []
         while confirmed is False:
-            ids = raw_input(prompt).split(',')
-            if raw_input('Your input is \n\t'+str(ids)+', confirm? [Y/N] ').lower() == 'y':
+            response = raw_input(prompt)
+            fragment = response.split(',')
+            for token_i in fragment:
+                if '-' in token_i:  # it is a range
+                    limits = token_i.split('-')
+                    if len(limits) == 2:
+                        if int(limits[0].strip()) < int(limits[1].strip()):
+                            subrange = range(int(limits[0].strip()), int(limits[1].strip())+1)
+                            for j in subrange:
+                                vec_index_selected.append(j)
+                else:
+                    vec_index_selected.append(token_i.strip())
+            if raw_input('Your input is \n\t'+str(vec_index_selected)+', confirm? [Y/N] ').lower() == 'y':
                 confirmed = True
-                return map(int, ids)
+                return map(int, vec_index_selected)
 
     @staticmethod
     def parse_config_file(config_file):
@@ -231,11 +243,11 @@ class SiMon(object):
         :return: current selected task symbol.
         """
         opt = ''
-        while opt.lower() not in ['l', 's', 'n', 'r', 'c', 'x', 'd', 'k', 'b', 'p', 'q']:
+        while opt.lower() not in ['l', 's', 'n', 'r', 'c', 'x', 't', 'd', 'k', 'b', 'p', 'q']:
             sys.stdout.write('\n=======================================\n')
             sys.stdout.write('\tList Instances (L), \n\tSelect Instance (S), '
                              '\n\tNew Run (N), \n\tRestart (R), \n\tCheck status (C), '
-                             '\n\tExecute (X), \n\tDelete Instance (D), \n\tKill Instance (K), '
+                             '\n\tExecute (X), \n\tStop Simulation (T), \n\tDelete Instance (D), \n\tKill Instance (K), '
                              '\n\tBackup Restart File (B), \n\tPost Processing (P), \n\tQuit (Q): \n')
             opt = raw_input('\nPlease choose an action to continue: ').lower()
 
@@ -253,7 +265,7 @@ class SiMon(object):
         if opt == 'l':  # list all simulations
             self.build_simulation_tree()
             self.print_sim_status_overview(0)
-        if opt in ['s', 'n', 'r', 'c', 'x', 'd', 'k', 'b', 'p']:
+        if opt in ['s', 'n', 'r', 'c', 'x', 't', 'd', 'k', 'b', 'p']:
             if self.mode == 'interactive':
                 if self.selected_inst is None or len(self.selected_inst) == 0 or opt == 's':
                     self.selected_inst = self.id_input('Please specify a list of IDs: ')
@@ -279,11 +291,19 @@ class SiMon(object):
                 else:
                     print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
         if opt == 'x':  # execute an UNIX shell command in the simulation directory
+            print('Executing an UNIX shell command in the selected simulations.')
+            shell_command = raw_input('CMD>> ')
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
-                    self.sim_inst_dict[sid].sim_shell_exec()
+                    self.sim_inst_dict[sid].sim_shell_exec(shell_command=shell_command)
                 else:
                     print('The selected simulation with ID = %d does not exist. Cannot execute command.\n' % sid)
+        if opt == 't':  # soft-stop the simulation in the ways that supported by the code
+            for sid in self.selected_inst:
+                if sid in self.sim_inst_dict:
+                    self.sim_inst_dict[sid].sim_stop()
+                else:
+                    print('The selected simulation with ID = %d does not exist. Simulation not stopped.\n' % sid)
         if opt == 'd':  # delete the simulation tree and all its data
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:

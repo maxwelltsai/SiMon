@@ -312,6 +312,7 @@ class SimulationTask(object):
         # integration.
         stop_file = open(os.path.join(self.full_dir, 'STOP'), 'w')
         stop_file.close()
+        print('A stop request has been sent to simulation %s' % self.name)
         return 0
 
     def sim_backup_checkpoint(self):
