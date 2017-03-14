@@ -95,12 +95,12 @@ class SimulationTask(object):
         placeholder_space = "    " + ' ' * (level * 4)
         ctime_str = datetime.datetime.fromtimestamp(self.ctime).strftime('%Y-%m-%d %H:%M:%S')
         mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%Y-%m-%d %H:%M:%S')
-        info = "%s\t%s\t%s\n%s%s\tT=%g [%g-%g]\t%s\tLV=%d\tPR=%d\tCID=%d" % (repr(self.name), ctime_str,
-                                                                                   mtime_str, placeholder_space,
+
+        info = "%s\t%s\n%s%s\tT=%g [%g-%g]\t" % (repr(self.name), mtime_str, placeholder_space,
                                                                                    SimulationTask.STATUS_LABEL[self.status],
+                                                                                   # self.status,
                                                                                    self.t, self.t_min,
-                                                                                   self.t_max, self.error_type,
-                                                                                   self.level, self.niceness, self.cid)
+                                                                                   self.t_max)
         ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
         # ret = "    "*level+str(self.id)+repr(self.name)+"\n"
         for child in self.restarts:

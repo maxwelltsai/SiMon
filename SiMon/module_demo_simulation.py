@@ -5,16 +5,16 @@ import subprocess
 import time
 import glob
 
-__simulation__ = 'PseudoSimulation'
+__simulation__ = 'DemoSimulation'
 
 
-class PseudoSimulation(SimulationTask):
+class DemoSimulation(SimulationTask):
 
     def __init__(self, sim_id, name, full_dir, status, mode='daemon', t_min=0, t_max=0, restarts=None):
-        super(PseudoSimulation, self).__init__(sim_id, name, full_dir, status, mode, t_min, t_max, restarts)
+        super(DemoSimulation, self).__init__(sim_id, name, full_dir, status, mode, t_min, t_max, restarts)
 
     def sim_get_model_time(self):
-        super(PseudoSimulation, self).sim_get_model_time()
+        super(DemoSimulation, self).sim_get_model_time()
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
         if self.config.has_option('Simulation', 'Output_file'):
