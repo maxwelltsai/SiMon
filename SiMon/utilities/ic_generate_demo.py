@@ -11,9 +11,9 @@ output_file_name = 'output.txt'
 output_dir = 'demo_sim_t_end=%g_a=%g_e=%g'
 error_file_name = 'error.txt'
 sim_start_command = \
-    'python -u /Users/penny/Works/simon_project/SiMon/SiMon/demo_simulation.py -a %f -o %f -t %f 2>error.txt'
+    'python -u /Users/penny/Works/simon_project/SiMon/SiMon/utilities/demo_simulation_code.py -a %f -o %f -t %f 2>error.txt'
 sim_restart_command = \
-    'python -u /Users/penny/Works/simon_project/SiMon/SiMon/demo_simulation.py -a %f -o %f -t %f 2>error.txt'
+    'python -u /Users/penny/Works/simon_project/SiMon/SiMon/utilities/demo_simulation_code.py -a %f -o %f -t %f 2>error.txt'
 sim_stop_command = 'touch STOP'
 
 config_file_template = '''[Simulation]
