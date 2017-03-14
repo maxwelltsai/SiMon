@@ -91,15 +91,16 @@ class SimulationTask(object):
         self.sim_get_status()
 
     def progress(self, count, total, suffix=''):
-        bar_len = 60
+        bar_len = 40
         if total == 0:
             return ''
         else:
             filled_len = int(round(bar_len * count / float(total)))
 
             percents = round(100.0 * count / float(total), 1)
-            bar = '=' * filled_len + '-' * (bar_len - filled_len)
-            return '[%s] %s%s %s\r' % (bar, percents, '%', suffix)
+            bar = '=' * filled_len + '.' * (bar_len - filled_len)
+            # return '[%s] %s%s %s\r' % (bar, percents, '%', suffix)
+            return '[%s] %s %s\r' % (bar, '>>>', suffix)
 
     def __repr__(self, level=0):
         placeholder_dash = "|---" + '-' * (level * 4)
@@ -107,17 +108,11 @@ class SimulationTask(object):
         ctime_str = datetime.datetime.fromtimestamp(self.ctime).strftime('%Y-%m-%d %H:%M:%S')
         mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%Y-%m-%d %H:%M:%S')
         
-        progress_bar = self.progress(self.t, self.t_max)
-        
-        # info = "%s\t%s\n%s%s\tT=%g [%g-%g]\t" % (repr(self.name), mtime_str, placeholder_space,
-#                                                                                            SimulationTask.STATUS_LABEL[self.status],
-#                                                                                            # self.status,
-#                                                                                            self.t, self.t_min,
-#                                                                                            self.t_max)
+        progress_bar = self.progress(self.t, self.t_max, int(self.t_max))
 
         info = "%s\t%s\n%s%s\tT=%g %s \t" % (repr(self.name), mtime_str, placeholder_space,
                                                                                    SimulationTask.STATUS_LABEL[self.status],
-                                                                                   self.t_min, progress_bar)
+                                                                                   self.t, progress_bar)
         ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
         # ret = "    "*level+str(self.id)+repr(self.name)+"\n"
         for child in self.restarts:
