@@ -5,15 +5,15 @@ Generate initial conditions and populate simulation data directory structure.
 
 import os
 
-sim_root_dir = '/Volumes/RamDisk/sim'
+sim_root_dir = '/Users/penny/Works/simon_project/test_code'
 config_file_name = 'SiMon.conf'
 output_file_name = 'output.txt'
-output_dir = 'pseudo_sim_t_end=%g_a=%g_e=%g'
+output_dir = 'demo_sim_t_end=%g_a=%g_e=%g'
 error_file_name = 'error.txt'
 sim_start_command = \
-    'python -u /Users/maxwell/PycharmProjects/SiMon/pseudo_simulation.py -a %f -o %f -t %f 2>error.txt'
+    'python -u /Users/penny/Works/simon_project/SiMon/SiMon/utilities/demo_simulation_code.py -a %f -o %f -t %f 2>error.txt'
 sim_restart_command = \
-    'python -u /Users/maxwell/PycharmProjects/SiMon/pseudo_simulation.py -a %f -o %f -t %f 2>error.txt'
+    'python -u /Users/penny/Works/simon_project/SiMon/SiMon/utilities/demo_simulation_code.py -a %f -o %f -t %f 2>error.txt'
 sim_stop_command = 'touch STOP'
 
 config_file_template = '''[Simulation]
@@ -56,7 +56,7 @@ Stop_command: %s
 
 a_vec = [1.0, 2.0, 3.0]
 o_vec = [3.5, 7.5, 10.5, 16.5]
-t_end = 10.0
+t_end = 30.0
 
 for a in a_vec:
     for o in o_vec:
@@ -69,13 +69,13 @@ for a in a_vec:
         conf_file = open(os.path.join(sim_root_dir, sim_dir, config_file_name), 'w')
         sim_start_cmd = sim_start_command % (a, o, t_end)
         sim_restart_cmd = sim_restart_command % (a, o, t_end)
-        conf_file.write(config_file_template % ('PseudoSimulation',
+        conf_file.write(config_file_template % ('DemoSimulation',
                                                 '',
                                                 output_file_name,
                                                 error_file_name,
                                                 0,
                                                 0,
-                                                10.0,
+                                                t_end,
                                                 sim_start_cmd,
                                                 sim_restart_cmd,
                                                 sim_stop_command))
