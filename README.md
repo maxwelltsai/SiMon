@@ -9,7 +9,7 @@
 * Report to the user if a certain simulation cannot be restarted (e.g. code keeps crashing for some reasons)
 * Allow the user to define the maximum concurrent instances of simulation, the maximum CPU and GPU usage for each simulation instance
 * When the total number of simulations exceeds the capacity of machine concurrency, automatically schedule the next simulation when the current simulation is finished.
-* Detect and kill hung simulations (simulations that utilize 100% CPU/GPU but do not make any progress for a long period of time)
+* Detect and kill stalled simulations (simulations that utilize 100% CPU/GPU but do not make any progress for a long period of time)
 
 **SiMon** is highly modular. Arbitrary N-body codes can be supported by **SiMon** by overriding `module_common.py`.
 
@@ -41,17 +41,17 @@ Generate test file using `python icutil_pseudo_simulation.py`
 
 You could run SiMon as a daemon program for a collection of simulations as:
 
-    python simon start
+    python simon.py start
     
 
 ### Stop the SiMon Daemon
 
 You could run SiMon as a daemon program for a collection of simulations as:
 
-    python simon stop
+    python simon.py stop
     
 ### Interactive mode
 Check simulation status and control the simulations manually:
 
-    python simon [interactive]
+    python simon.py [interactive]
 

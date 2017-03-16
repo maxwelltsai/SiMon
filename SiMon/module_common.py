@@ -104,6 +104,7 @@ class SimulationTask(object):
             return '%s [%s] %s\r' % (preffix, bar, suffix)
 
     def __repr__(self, level=0):
+
         if level == 0:
             ret = '[%s] %s\n' % (SimulationTask.STATUS_LABEL[self.status], self.full_dir)
         else:
@@ -119,6 +120,7 @@ class SimulationTask(object):
 
             ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
             # ret = "    "*level+str(self.id)+repr(self.name)+"\n"
+
         for child in self.restarts:
             ret += child.__repr__(level + 1)
         return ret
