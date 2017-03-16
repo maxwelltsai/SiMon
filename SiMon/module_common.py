@@ -91,17 +91,30 @@ class SimulationTask(object):
         self.parse_config_file()
         self.sim_get_status()
 
+    def progress(self, count, total, preffix='', suffix=''):
+        bar_len = 30
+        if total == 0:
+            return ''
+        else:
+            filled_len = int(round(bar_len * count / float(total)))
+
+            percents = round(100.0 * count / float(total), 1)
+            bar = '|' * filled_len + '.' * (bar_len - filled_len)
+            # return '[%s] %s%s %s\r' % (bar, percents, '%', suffix)
+            return '%s [%s] %s\r' % (preffix, bar, suffix)
+
     def __repr__(self, level=0):
         placeholder_dash = "|---" + '-' * (level * 4)
         placeholder_space = "    " + ' ' * (level * 4)
         ctime_str = datetime.datetime.fromtimestamp(self.ctime).strftime('%Y-%m-%d %H:%M:%S')
         mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%Y-%m-%d %H:%M:%S')
+        
+        preffix = 'T: %g >>> %g'%(int(self.t), int(self.t_max))
+        suffix = mtime_str
+        progress_bar = self.progress(self.t, self.t_max, preffix=preffix, suffix=suffix)
 
-        info = "%s\t%s\n%s%s\tT=%g [%g-%g]\t" % (repr(self.name), mtime_str, placeholder_space,
-                                                                                   SimulationTask.STATUS_LABEL[self.status],
-                                                                                   # self.status,
-                                                                                   self.t, self.t_min,
-                                                                                   self.t_max)
+        info = "%s  [%s] \n%s %s\t" % (repr(self.name), SimulationTask.STATUS_LABEL[self.status], placeholder_space, progress_bar)
+
         ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
         # ret = "    "*level+str(self.id)+repr(self.name)+"\n"
         for child in self.restarts:
