@@ -40,8 +40,11 @@ class SiMon(object):
             except cp.NoOptionError:
                 print('Item Root_dir is missing in configure file SiMon.conf. SiMon cannot start. Exiting...')
                 sys.exit(-1)
+        # make sure that cwd is the absolute path
+        if not os.path.isabs(cwd):
+            cwd = os.path.join(__simon_dir__, cwd)
         if not os.path.isdir(cwd):
-            print('Simulation root directory %s does not exist. Existing...' % cwd)
+            print('Simulation root directory does not exist. Existing...')
             sys.exit(-1)
 
         self.module_dict = self.register_modules()
@@ -172,8 +175,8 @@ class SiMon(object):
                     # sim_inst.errortype = self.check_instance_error_type(id)
                     self.sim_inst_dict[sim_inst.parent_id].status = sim_inst.status
 
-                    if sim_inst.t_max_extended > self.sim_inst_dict[sim_inst.parent_id].t_max_extended and \
-                            not os.path.isfile(os.path.join(sim_inst.fulldir, 'NORESTART')):
+                    if sim_inst.t > self.sim_inst_dict[sim_inst.parent_id].t and \
+                            not os.path.isfile(os.path.join(sim_inst.fulldir, 'ERROR')):
                         # nominate as restart candidate
                         self.sim_inst_dict[sim_inst.parent_id].cid = sim_inst.id
                         self.sim_inst_dict[sim_inst.parent_id].t_max_extended = sim_inst.t_max_extended
@@ -195,11 +198,11 @@ class SiMon(object):
         self.inst_id = 0
         os.path.walk(self.cwd, self.traverse_simulation_dir_tree, '*')
 
-        # Synchronize the status tree
+        # Synchronize the status tree (status propagation)
         update_needed = True
-        iter = 0
-        while update_needed and iter < 30:
-            iter += 1
+        max_iter = 0
+        while update_needed and max_iter < 30:
+            max_iter += 1
             inst_status_modified = False
             for i in self.sim_inst_dict:
                 if i == 0:
@@ -281,7 +284,7 @@ class SiMon(object):
         if opt == 'r':  # restart simulations
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
-                    self.sim_inst_dict[sid].sim_restart()
+                    self.sim_inst_dict[sid].sim_restart
                 else:
                     print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
         if opt == 'c':  # check the recent or current status of the simulation and print it
@@ -391,7 +394,6 @@ class SiMon(object):
                     sim.sim_start()
                     concurrent_jobs += 1
 
-
     def run(self):
         """
         The entry point of this script if it is run with the daemon.
@@ -415,6 +417,7 @@ class SiMon(object):
         terminal, and control the simulations accordingly.
         :return:
         """
+        print os.getcwd()
         os.chdir(self.cwd)
         self.build_simulation_tree()
         self.print_sim_status_overview(0)

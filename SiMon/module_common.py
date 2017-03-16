@@ -38,8 +38,9 @@ class SimulationTask(object):
     STATUS_RUN = 0x2  # the simulation is running
     STATUS_STALL = 0x3  # the simulation is running, but stalled
     STATUS_DONE = 0x4  # the simulation has finished
+    STATUS_ERROR = 0x5  # the simulation is crashed and not possible to be restarted
 
-    STATUS_LABEL = ['NEW', 'STOP', 'RUN', 'STALL', 'DONE']
+    STATUS_LABEL = ['NEW', 'STOP', 'RUN', 'STALL', 'DONE', 'ERROR']
 
     __metaclass__ = abc.ABCMeta
 
@@ -149,7 +150,6 @@ class SimulationTask(object):
         os.chdir(self.full_dir)
         # Test if the process is running
         if self.config.has_option('Simulation', 'PID'):
-            # It is also possible that the self.proc object is None, because it is created by another process
             pid = self.config.getint('Simulation', 'PID')
             if pid > 0:
                 try:
@@ -180,13 +180,18 @@ class SimulationTask(object):
         Restart the simulation.
 
         :return: Return 0 if succeed, -1 if failed. If the simulation is already running, then restart is not
-        necessary, the method will do nothing but return 1.
+        necessary, the method will do nothing but return 1. If the simulation is marked as 'STOP' or 'ERROR', then
+        return 2 and do nothing.
         """
+        if os.path.isfile('STOP') or os.path.isfile('ERROR'):
+            print('Restart skipped due to the existence of the STOP file or ERROR file.')
+            return 2
         # Test if the process is running
         start_script_template = '%s & echo $!>.process.pid'
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
-        print 'restarting simulation: ', self.full_dir
+        print('The full dir is %s' % self.full_dir)
+        print('restarting simulation: %s' % self.full_dir)
         # Test if the process is running
         if self.config.has_option('Simulation', 'PID'):
             # It is also possible that the self.proc object is None, because it is created by another process
@@ -196,23 +201,47 @@ class SimulationTask(object):
                     os.kill(pid, 0)
                     return 1  # if no exception, the process is already running
                 except (ValueError, OSError):
-                    pass  # process not started yet
-        # If the process is not started yet, then start it in a normal way
-        if self.config.has_option('Simulation', 'Restart_command'):
-            start_cmd = self.config.get('Simulation', 'Restart_command')
-            print 'restart command:', start_cmd
-            # self.proc = subprocess.Popen(start_cmd, shell=True)
-            os.system(start_script_template % start_cmd)
-            # sleep for a little while to make sure that the pid file exist
-            time.sleep(0.5)
-            fpid = open('.process.pid', 'r')
-            pid = int(fpid.readline())
-            fpid.close()
-            self.config.set('Simulation', 'PID', str(pid))
-            self.config.set('Simulation', 'Timestamp_started', str(time.time()))
-            self.config.write(open(self.config_file, 'w'))
-        else:
-            return -1
+                    # process not started yet
+                    # check how many times the simulation has been restarted
+                    restarts = glob.glob('restart*')
+                    n_restarts = len(restarts)
+                    print n_restarts, self.config.getint('Simulation', 'Max_restarts')
+                    # check whether it exceeds the maximum times of restarts specified in the per-sim config file
+                    if self.config.has_option('Simulation', 'Max_restarts'):
+                        if n_restarts > self.config.getint('Simulation', 'Max_restarts'):
+                            # if exceed, create an empty file called 'ERROR'
+                            f_error = open('ERROR', 'w')
+                            f_error.close()
+                            print('Simulation %s has been restarted too many times. Further restart skipped...'
+                                  % self.name)
+                            return -2
+                    else:
+                        # if the config entry Max_restarts does not exist in the config file, there is no restart limit
+                        pass
+                    # now try to restart the simulation
+                    if self.config.has_option('Simulation', 'Restart_command'):
+                        restart_cmd = self.config.get('Simulation', 'Restart_command')
+                        if restart_cmd is not '' and restart_cmd.strip() is not 'None':
+                            print('Restarting simulation: %s' % restart_cmd)
+                            # create a restart dir
+                            restart_dir = 'restart%d' % (n_restarts + 1)
+                            os.mkdir(restart_dir)
+                            os.chdir(restart_dir)
+                            os.system(start_script_template % restart_cmd)
+                            # sleep for a little while to make sure that the pid file exist
+                            time.sleep(0.5)
+                            fpid = open('.process.pid', 'r')
+                            pid = int(fpid.readline())
+                            fpid.close()
+                            self.config.set('Simulation', 'PID', str(pid))
+                            self.config.set('Simulation', 'Timestamp_started', str(time.time()))
+                            self.config.write(open(self.config_file, 'w'))
+                        else:
+                            print('Error: unable to restart because the restart command is not properly configured.')
+                            return -1
+                    else:
+                        print('Error: unable to restart because the restart command is not configured.')
+                        return -1
         os.chdir(orig_dir)
         return 0
 
@@ -260,7 +289,6 @@ class SimulationTask(object):
             if pid == 0 and self.mtime == 0:
                 self.status = SimulationTask.STATUS_NEW
             else:
-                strpid = str(pid)
                 try:
                     os.kill(pid, 0)
                     # it is running. Check if stalled.
@@ -278,8 +306,12 @@ class SimulationTask(object):
                     else:
                         if self.ctime == 0.0:
                             self.status = SimulationTask.STATUS_NEW
+                        elif os.path.isfile('ERROR'):
+                            print('ERROR here')
+                            self.status = SimulationTask.STATUS_ERROR
                         else:
                             self.status = SimulationTask.STATUS_STOP
+        os.chdir(orig_dir)
         return self.status
 
     def sim_kill(self):
