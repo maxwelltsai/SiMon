@@ -171,12 +171,11 @@ class SiMon(object):
                     # Get simulation status
                     sim_inst.sim_get_status()
 
-                    # TODO: add error type detection to sim_inst.sim_check_status()
-                    # sim_inst.errortype = self.check_instance_error_type(id)
                     self.sim_inst_dict[sim_inst.parent_id].status = sim_inst.status
 
-                    if sim_inst.t > self.sim_inst_dict[sim_inst.parent_id].t and \
-                            not os.path.isfile(os.path.join(sim_inst.fulldir, 'ERROR')):
+                    if (sim_inst.t > self.sim_inst_dict[sim_inst.parent_id].t and
+                            not os.path.isfile(os.path.join(sim_inst.fulldir, 'ERROR'))) \
+                            or sim_inst.status == SimulationTask.STATUS_RUN:
                         # nominate as restart candidate
                         self.sim_inst_dict[sim_inst.parent_id].cid = sim_inst.id
                         self.sim_inst_dict[sim_inst.parent_id].t_max_extended = sim_inst.t_max_extended
@@ -279,12 +278,16 @@ class SiMon(object):
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_start()
+                    # reset the selection list
+                    self.selected_inst = []
                 else:
                     print('The selected simulation with ID = %d does not exist. Simulation not started.\n' % sid)
         if opt == 'r':  # restart simulations
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
-                    self.sim_inst_dict[sid].sim_restart
+                    self.sim_inst_dict[sid].sim_restart()
+                    # reset the selection list
+                    self.selected_inst = []
                 else:
                     print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
         if opt == 'c':  # check the recent or current status of the simulation and print it
@@ -311,12 +314,16 @@ class SiMon(object):
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_delete()
+                    # reset the selection list
+                    self.selected_inst = []
                 else:
                     print('The selected simulation with ID = %d does not exist. Cannot delete simulation.\n' % sid)
         if opt == 'k':  # kill the UNIX process associate with a simulation task
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_kill()
+                    # reset the selection list
+                    self.selected_inst = []
                 else:
                     print('The selected simulation with ID = %d does not exist. Cannot kill simulation.\n' % sid)
         if opt == 'b':  # backup the simulation checkpoint files (for restarting purpose in the future)
@@ -328,7 +335,9 @@ class SiMon(object):
         if opt == 'p':  # perform (post)-processing (usually after the simulation is done)
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
-                    pass
+                    self.sim_inst_dict[sid].sim_finalize()
+                    # reset the selection list
+                    self.selected_inst = []
                 else:
                     print('The selected simulation with ID = %d does not exist. Cannot perform postprocessing.\n' % sid)
 
@@ -373,16 +382,16 @@ class SiMon(object):
             elif sim.status == SimulationTask.STATUS_STALL:
                 sim.sim_kill()
                 self.build_simulation_tree()
-            elif sim.status == SimulationTask.STATUS_STOP:
+            elif sim.status == SimulationTask.STATUS_STOP and sim.level == 1:
                 self.logger.warning('STOP detected: '+sim.fulldir+'  '+str(concurrent_jobs))
                 # check if there is available slot to restart the simulation
                 if concurrent_jobs < self.max_concurrent_jobs and sim.level == 1:
                     # search only top level instance to find the restart candidate
                     # build restart path
                     current_inst = sim
+                    # restart the simulation instance at the leaf node
                     while current_inst.cid != -1:
                         current_inst = self.sim_inst_dict[current_inst.cid]
-                    # restart the simulation instance at the leaf node
                     print('RESTART: #%d ==> %s' % (current_inst.id, current_inst.fulldir))
                     self.logger.info('RESTART: #%d ==> %s' % (current_inst.id, current_inst.fulldir))
                     current_inst.sim_restart()
