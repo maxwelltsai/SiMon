@@ -104,19 +104,23 @@ class SimulationTask(object):
             return '%s [%s] %s\r' % (preffix, bar, suffix)
 
     def __repr__(self, level=0):
-        placeholder_dash = "|---" + '-' * (level * 4)
-        placeholder_space = "    " + ' ' * (level * 4)
-        ctime_str = datetime.datetime.fromtimestamp(self.ctime).strftime('%Y-%m-%d %H:%M:%S')
-        mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%Y-%m-%d %H:%M:%S')
-        
-        preffix = 'T: %g >>> %g'%(int(self.t), int(self.t_max))
-        suffix = mtime_str
-        progress_bar = self.progress(self.t, self.t_max, preffix=preffix, suffix=suffix)
 
-        info = "%s  [%s] \n%s %s\t" % (repr(self.name), SimulationTask.STATUS_LABEL[self.status], placeholder_space, progress_bar)
+        if level == 0:
+            ret = '[%s] %s\n' % (SimulationTask.STATUS_LABEL[self.status], self.full_dir)
+        else:
+            placeholder_dash = "|---" + '-' * (level * 4)
+            placeholder_space = "    " + ' ' * (level * 4)
+            mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%Y-%m-%d %H:%M:%S')
 
-        ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
-        # ret = "    "*level+str(self.id)+repr(self.name)+"\n"
+            prefix = 'T: %g >>> %g' % (int(self.t), int(self.t_max))
+            suffix = mtime_str
+            progress_bar = self.progress(self.t, self.t_max, preffix=prefix, suffix=suffix)
+
+            info = "%s  [%s] \n%s %s\t" % (str(self.name), SimulationTask.STATUS_LABEL[self.status], placeholder_space, progress_bar)
+
+            ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
+            # ret = "    "*level+str(self.id)+repr(self.name)+"\n"
+
         for child in self.restarts:
             ret += child.__repr__(level + 1)
         return ret
@@ -200,7 +204,7 @@ class SimulationTask(object):
             print('Restart skipped due to the existence of the STOP file or ERROR file.')
             return 2
         # Test if the process is running
-        start_script_template = '%s & echo $!>.process.pid'
+        restart_script_template = '%s & echo $!>.process.pid'
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
         print('The full dir is %s' % self.full_dir)
@@ -240,7 +244,7 @@ class SimulationTask(object):
                             restart_dir = 'restart%d' % (n_restarts + 1)
                             os.mkdir(restart_dir)
                             os.chdir(restart_dir)
-                            os.system(start_script_template % restart_cmd)
+                            os.system(restart_script_template % restart_cmd)
                             # sleep for a little while to make sure that the pid file exist
                             time.sleep(0.5)
                             fpid = open('.process.pid', 'r')
@@ -284,10 +288,10 @@ class SimulationTask(object):
         """
         Get the current status of the simulation. Update the config file if necessary.
 
-        :return: A dict containing the information of the current simulation status.
+        :return: The code of the current simulation status.
         """
         if self.config is None:
-            return None
+            return 0
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
         self.t = self.sim_get_model_time()
@@ -314,7 +318,7 @@ class SimulationTask(object):
                         self.status = SimulationTask.STATUS_RUN
                 except (OSError, ValueError), e:
                     # The process is not running, check if stopped or done
-                    if self.t >= self.t_max:
+                    if self.t >= self.t_max or self.status == SimulationTask.STATUS_DONE:
                         self.status = SimulationTask.STATUS_DONE
                     else:
                         if self.ctime == 0.0:
@@ -340,6 +344,7 @@ class SimulationTask(object):
             pid = self.config.getint('Simulation', 'PID')
             try:
                 os.kill(pid, signal.SIGKILL)
+                print('Simulation %s (PID: %d) killed.' % (self.name, pid))
             except OSError, err:
                 print('Cannot kill the process: \n' + str(err))
         return 0
