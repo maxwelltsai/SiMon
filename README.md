@@ -25,17 +25,17 @@ Or you can install the latest developer version from the git repository using:
     
 # Usage
 
-### Generate a test simulation file (Optional)
+### Generate a grid of demo simulations (Optional)
 
-Open `/SiMon/SiMon.conf` and edit the dir from: 
+Navigate to the main code directory of SiMon, and execute the script: 
 
-    Root_dir: /Volumes/RamDisk/sim
+    python python ic_generator_demo.py
     
-To any directory where can store the test file, eg. `~/SiMon/test_pseudo_simu`
+This will create a grid of pseudo simulations in the directory `examples`.
 
-Then, change the `sim_root_dir` in `icutil_pseudo_simulation.py` to dir the same as above.
+### Edit the config file
 
-Generate test file using `python icutil_pseudo_simulation.py`
+Edit the global SiMon config file `SiMon.conf` accordingly.
 
 ### Start the SiMon Daemon
 
