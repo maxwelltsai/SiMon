@@ -57,3 +57,9 @@ htmlcov
 
 # PyCharm
 .idea
+
+SiMon/SiMon.err.txt
+
+SiMon/SiMon.log
+
+SiMon/SiMon.out.txt
