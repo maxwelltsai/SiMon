@@ -8,6 +8,7 @@ import time
 import sys
 import re
 import shutil
+from utilities import Utilities
 
 try:
     import configparser as cp  # Python 3 only
@@ -91,18 +92,6 @@ class SimulationTask(object):
         self.parse_config_file()
         self.sim_get_status()
 
-    def progress(self, count, total, preffix='', suffix=''):
-        bar_len = 30
-        if total == 0:
-            return ''
-        else:
-            filled_len = int(round(bar_len * count / float(total)))
-
-            percents = round(100.0 * count / float(total), 1)
-            bar = '|' * filled_len + '.' * (bar_len - filled_len)
-            # return '[%s] %s%s %s\r' % (bar, percents, '%', suffix)
-            return '%s [%s] %s\r' % (preffix, bar, suffix)
-
     def __repr__(self, level=0):
 
         if level == 0:
@@ -114,9 +103,10 @@ class SimulationTask(object):
 
             prefix = 'T: %g >>> %g' % (int(self.t), int(self.t_max))
             suffix = mtime_str
-            progress_bar = self.progress(self.t, self.t_max, preffix=prefix, suffix=suffix)
+            progress_bar = Utilities.progress_bar(self.t, self.t_max, prefix=prefix, suffix=suffix)
 
-            info = "%s  [%s] \n%s %s\t" % (str(self.name), SimulationTask.STATUS_LABEL[self.status], placeholder_space, progress_bar)
+            info = "%s  [%s] \n%s %s\t" % (Utilities.highlighted_text(str(self.name), 'cyan', bold=True),
+                                           SimulationTask.STATUS_LABEL[self.status], placeholder_space, progress_bar)
 
             ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
             # ret = "    "*level+str(self.id)+repr(self.name)+"\n"

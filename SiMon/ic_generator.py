@@ -78,7 +78,7 @@ Max_restarts: %d
                 if not os.path.isdir(self.sim_data_dir):
                     print('Simulation data directory %s does not exist. Making the dir...' % self.sim_data_dir)
                     try:
-                        os.mkdir(self.sim_data_dir)
+                        os.makedirs(self.sim_data_dir)
                         print('Simulation data directory created successfully.')
                     except IOError as err:
                         print('Unable to create the simulation data directory: %s' % err)
@@ -112,7 +112,7 @@ Max_restarts: %d
         """
         if not os.path.isdir(os.path.join(self.sim_data_dir, output_dir)):
             print('Creating directory: %s' % os.path.join(self.sim_data_dir, output_dir))
-            os.mkdir(os.path.join(self.sim_data_dir, output_dir))
+            os.makedirs(os.path.join(self.sim_data_dir, output_dir))
         conf_file = open(os.path.join(self.sim_data_dir, output_dir, self.config_file_per_sim), 'w')
         conf_file.write(InitialConditionGenerator.config_file_template % (code_name,
                                                                           input_file,
