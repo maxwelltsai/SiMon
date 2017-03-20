@@ -15,6 +15,10 @@
 
 # Installation
 
+**SiMon** depends on `python-daemon`. If you do not have this installed in your Python environment, you could install with
+
+    pip install python-daemon
+
 To install the latest stable version of **SiMon**, you can do
 
     pip install astro_simon
