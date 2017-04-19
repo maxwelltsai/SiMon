@@ -1,5 +1,7 @@
 # SiMon -- Simulation Monitor
 
+![alt tag](https://cloud.githubusercontent.com/assets/11092373/25200544/faf80cb2-254e-11e7-915c-c4dea66e2424.png)
+
 **SiMon** is an automatic monitor/scheduler/pipeline for astrophysical N-body simulations. In astrophysics, it is common that a grid of simulations is needed to explore a parameter space. SiMon facilitates the paramater-space study simulations in the follow ways:
 
 * Generate an overview of the current simulation status
