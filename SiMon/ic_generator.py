@@ -108,6 +108,8 @@ Max_restarts: %d
         :param restart_cmd: The UNIX command to restart the simulation
         :param stop_cmd: The UNIX command to request the simulation code to stop the simulation (optional)
         :param niceness: The priority of the simulation, -20 to 19, lower are higher (optional, default: 0)
+        :param max_restarts: The maximum number of attempts a simulation will be restarted, beyond which the simulation
+                             is considered ERROR
         :return: return 0 if succeed, -1 if failed.
         """
         if not os.path.isdir(os.path.join(self.sim_data_dir, output_dir)):
@@ -128,7 +130,7 @@ Max_restarts: %d
                                                                           start_cmd,
                                                                           restart_cmd,
                                                                           stop_cmd,
-                                                                          5))  # max_restarts
+                                                                          max_restarts))  # max_restarts
         conf_file.close()
 
 
