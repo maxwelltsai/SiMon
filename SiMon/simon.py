@@ -153,7 +153,9 @@ class SiMon(object):
 
                             if code_name in self.module_dict:
                                 sim_inst_mod = __import__(self.module_dict[code_name])
-                                sim_inst = getattr(sim_inst_mod, code_name)(id, filename, fullpath, SimulationTask.STATUS_NEW)
+                                sim_inst = getattr(sim_inst_mod, code_name)(id, filename, fullpath,
+                                                                            SimulationTask.STATUS_NEW,
+                                                                            logger=self.logger)
                         except cp.NoOptionError:
                             pass
                     self.sim_inst_dict[id] = sim_inst
@@ -383,7 +385,7 @@ class SiMon(object):
                 sim.sim_kill()
                 self.build_simulation_tree()
             elif sim.status == SimulationTask.STATUS_STOP and sim.level == 1:
-                self.logger.warning('STOP detected: '+sim.fulldir+'  '+str(concurrent_jobs))
+                self.logger.warning('STOP detected: '+sim.fulldir)
                 # check if there is available slot to restart the simulation
                 if concurrent_jobs < self.max_concurrent_jobs and sim.level == 1:
                     # search only top level instance to find the restart candidate
@@ -402,6 +404,8 @@ class SiMon(object):
                     # Start new run
                     sim.sim_start()
                     concurrent_jobs += 1
+        self.logger.info('SiMon routine checking completed. Machine load: %d/%d' % (concurrent_jobs,
+                                                                                    self.max_concurrent_jobs))
 
     def run(self):
         """
@@ -411,7 +415,6 @@ class SiMon(object):
         self.build_simulation_tree()
         while True:
             # print('[%s] Auto scheduled' % datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-            self.logger.info('SiMon routine checking...')
             self.auto_scheduler()
             sys.stdout.flush()
             sys.stderr.flush()
@@ -444,19 +447,31 @@ class SiMon(object):
         if necessary.
         :return:
         """
-        app = SiMon(pidfile=os.path.join(os.getcwd(), 'run_mgr_daemon.pid'),
+        app = SiMon(pidfile=os.path.join(os.getcwd(), 'SiMon_daemon.pid'),
                     stdout=os.path.join(os.getcwd(), 'SiMon.out.txt'),
                     stderr=os.path.join(os.getcwd(), 'SiMon.err.txt'),
                     cwd=simon_dir,
                     mode='daemon')
         # log system
         app.logger = logging.getLogger("DaemonLog")
-        app.logger.setLevel(logging.INFO)
+        if app.config.has_option('SiMon', 'Log_level'):
+            log_level = app.config.get('SiMon', 'Log_level')
+            if log_level == 'INFO':
+                app.logger.setLevel(logging.INFO)
+            elif log_level == 'WARNING':
+                app.logger.setLevel(logging.WARNING)
+            elif log_level == 'ERROR':
+                app.logger.setLevel(logging.ERROR)
+            elif log_level == 'CRITICAL':
+                app.logger.setLevel(logging.CRITICAL)
+            else:
+                app.logger.setLevel(logging.INFO)
         formatter = logging.Formatter("%(asctime)s - [%(levelname)s] - %(name)s - %(message)s")
         handler = logging.FileHandler(os.path.join(simon_dir, 'SiMon.log'))
         handler.setFormatter(formatter)
         app.logger.addHandler(handler)
         # initialize the daemon runner
+        app.logger.info('Starting SiMon daemon at log level %s' % log_level)
         daemon_runner = runner.DaemonRunner(app)
         # This ensures that the logger file handle does not get closed during daemonization
         daemon_runner.daemon_context.files_preserve = [handler.stream]

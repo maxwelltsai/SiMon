@@ -10,8 +10,8 @@ __simulation__ = 'LonelyPlanets'
 
 class LonelyPlanets(SimulationTask):
 
-    def __init__(self, sim_id, name, full_dir, status, mode='daemon', t_min=0, t_max=0, restarts=None):
-        super(LonelyPlanets, self).__init__(sim_id, name, full_dir, status, mode, t_min, t_max, restarts)
+    def __init__(self, sim_id, name, full_dir, status, mode='daemon', t_min=0, t_max=0, restarts=None, logger=None):
+        super(LonelyPlanets, self).__init__(sim_id, name, full_dir, status, mode, t_min, t_max, restarts, logger)
 
     def sim_get_model_time(self):
         super(LonelyPlanets, self).sim_get_model_time()

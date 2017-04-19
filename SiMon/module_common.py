@@ -45,7 +45,7 @@ class SimulationTask(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sim_id, name, full_dir, status, mode='daemon', t_min=0, t_max=0, restarts=None):
+    def __init__(self, sim_id, name, full_dir, status, mode='daemon', t_min=0, t_max=0, restarts=None, logger=None):
         """
         :param sim_id:
 
@@ -65,6 +65,7 @@ class SimulationTask(object):
         self.name = name
         self.full_dir = full_dir
         self.status = status
+        self.logger = logger
         self.error_type = ''
         self.config_file = 'SiMon.conf'  # the file name of the config file to be placed in each simulation directory
         self.config = None
@@ -93,7 +94,6 @@ class SimulationTask(object):
         self.sim_get_status()
 
     def __repr__(self, level=0):
-
         if level == 0:
             ret = '[%s] %s\n' % (SimulationTask.STATUS_LABEL[self.status], self.full_dir)
         else:
@@ -110,7 +110,6 @@ class SimulationTask(object):
 
             ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
             # ret = "    "*level+str(self.id)+repr(self.name)+"\n"
-
         for child in self.restarts:
             ret += child.__repr__(level + 1)
         return ret
@@ -140,8 +139,10 @@ class SimulationTask(object):
 
         else:
             if self.id > 0:
-                print('WARNING: Simulation configuration file not exists! '
-                      'Creating default configuration as SiMon.conf.\n')
+                msg = 'WARNING: Simulation configuration file not exists! ' \
+                      'Creating default configuration as SiMon.conf.\n'
+                if self.logger is not None:
+                    self.logger.warning(msg)
             # TODO: write default config file
         return 0
 
@@ -177,6 +178,9 @@ class SimulationTask(object):
             self.config.set('Simulation', 'PID', str(pid))
             self.config.set('Simulation', 'Timestamp_started', str(time.time()))
             self.config.write(open(self.config_file, 'w'))
+            if self.logger is not None:
+                msg = 'Simulation %s started, PID = %d' % (self.name, pid)
+                self.logger.info(msg)
         else:
             return -1
         os.chdir(orig_dir)
@@ -199,6 +203,8 @@ class SimulationTask(object):
         os.chdir(self.full_dir)
         print('The full dir is %s' % self.full_dir)
         print('restarting simulation: %s' % self.full_dir)
+        if self.logger is not None:
+            self.logger.info('Restarting simulation: %s' % self.full_dir)
         # Test if the process is running
         if self.config.has_option('Simulation', 'PID'):
             # It is also possible that the self.proc object is None, because it is created by another process
@@ -219,8 +225,10 @@ class SimulationTask(object):
                             # if exceed, create an empty file called 'ERROR'
                             f_error = open('ERROR', 'w')
                             f_error.close()
-                            print('Simulation %s has been restarted too many times. Further restart skipped...'
-                                  % self.name)
+                            msg = 'Simulation %s has been restarted too many times. Further restart skipped...' % self.full_dir
+                            print(msg)
+                            if self.logger is not None:
+                                self.logger.error(msg)
                             return -2
                     else:
                         # if the config entry Max_restarts does not exist in the config file, there is no restart limit
@@ -229,7 +237,10 @@ class SimulationTask(object):
                     if self.config.has_option('Simulation', 'Restart_command'):
                         restart_cmd = self.config.get('Simulation', 'Restart_command')
                         if restart_cmd is not '' and restart_cmd.strip() is not 'None':
-                            print('Restarting simulation: %s' % restart_cmd)
+                            msg = 'Restarting simulation: %s' % self.full_dir
+                            print(msg)
+                            if self.logger is not None:
+                                self.logger.info(msg)
                             # create a restart dir
                             restart_dir = 'restart%d' % (n_restarts + 1)
                             os.mkdir(restart_dir)
@@ -244,10 +255,16 @@ class SimulationTask(object):
                             self.config.set('Simulation', 'Timestamp_started', str(time.time()))
                             self.config.write(open(self.config_file, 'w'))
                         else:
-                            print('Error: unable to restart because the restart command is not properly configured.')
+                            msg = '%s: unable to restart because the restart command is not properly configured.' % self.name
+                            print(msg)
+                            if self.logger is not None:
+                                self.logger.error(msg)
                             return -1
                     else:
-                        print('Error: unable to restart because the restart command is not configured.')
+                        msg = '%s: unable to restart because the restart command is not configured.' % self.name
+                        print(msg)
+                        if self.logger is not None:
+                            self.logger.error(msg)
                         return -1
         os.chdir(orig_dir)
         return 0
@@ -314,7 +331,6 @@ class SimulationTask(object):
                         if self.ctime == 0.0:
                             self.status = SimulationTask.STATUS_NEW
                         elif os.path.isfile('ERROR'):
-                            print('ERROR here')
                             self.status = SimulationTask.STATUS_ERROR
                         else:
                             self.status = SimulationTask.STATUS_STOP
@@ -334,9 +350,15 @@ class SimulationTask(object):
             pid = self.config.getint('Simulation', 'PID')
             try:
                 os.kill(pid, signal.SIGKILL)
-                print('Simulation %s (PID: %d) killed.' % (self.name, pid))
+                msg = 'Simulation %s (PID: %d) killed.' % (self.name, pid)
+                print(msg)
+                if self.logger is not None:
+                    self.logger.info(msg)
             except OSError, err:
-                print('Cannot kill the process: \n' + str(err))
+                msg = '%s: Cannot kill the process: %s\n' % (str(err),  self.name)
+                print(msg)
+                if self.logger is not None:
+                    self.logger.warning(msg)
         return 0
 
     def sim_stop(self):
@@ -352,7 +374,10 @@ class SimulationTask(object):
         # integration.
         stop_file = open(os.path.join(self.full_dir, 'STOP'), 'w')
         stop_file.close()
-        print('A stop request has been sent to simulation %s' % self.name)
+        msg = 'A stop request has been sent to simulation %s' % self.name
+        print(msg)
+        if self.logger is not None:
+            self.logger.info(msg)
         return 0
 
     def sim_backup_checkpoint(self):
