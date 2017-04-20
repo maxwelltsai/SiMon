@@ -30,9 +30,13 @@ class SiMon(object):
         """
 
         # Only needed in interactive mode
-        self.config = self.parse_config_file(config_file)
+        # self.config = self.parse_config_file(os.getcwd(), config_file)
+        conf_path = os.path.join(os.getcwd(), config_file)
+        self.config = self.parse_config_file(conf_path)
+        
+        # TODO: os.getcwd() gives dir of where the current console is, eg. type simon-interactive on /SiMon will give an error, but on SiMon/Simon dir it can work.
         if self.config is None:
-            print('Error: Configure file SiMon.conf does not exist.')
+            print('Error: Configure file SiMon.conf does not exist.', conf_path)
             sys.exit(-1)
         else:
             try:
@@ -126,10 +130,18 @@ class SiMon(object):
         mod_dict = dict()
         module_candidates = glob.glob('module_*.py')
         for mod_name in module_candidates:
-            mod = __import__(mod_name.split('.')[0])
+            sys.path.append(os.getcwd())
+            import importlib
+            mod =  __import__(mod_name.split('.')[0])
+            
+            # mod = __import__(mod_name.split('.')[0])
+            
+            #print('mod_dict', mod, mod_dict)
+            # mod = __import__(module_path)
             if hasattr(mod, '__simulation__'):
                 # it is a valid SiMon module
                 mod_dict[mod.__simulation__] = mod_name.split('.')[0]
+            
         return mod_dict
 
     def traverse_simulation_dir_tree(self, pattern, base_dir, files):
@@ -493,3 +505,11 @@ if __name__ == "__main__":
         else:
             SiMon.print_help()
             sys.exit(0)
+            
+def interactive():
+    s = SiMon()
+    s.interactive_mode()
+    
+def daemon():
+    SiMon.daemon_mode(os.getcwd())
+
