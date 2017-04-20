@@ -136,7 +136,7 @@ class SiMon(object):
             
             # mod = __import__(mod_name.split('.')[0])
             
-            print('mod_dict', mod, mod_dict)
+            #print('mod_dict', mod, mod_dict)
             # mod = __import__(module_path)
             if hasattr(mod, '__simulation__'):
                 # it is a valid SiMon module
@@ -489,22 +489,23 @@ class SiMon(object):
         daemon_runner.daemon_context.files_preserve = [handler.stream]
         daemon_runner.do_action()  # fixed time period of calling run()
 
-# if __name__ == "__main__":
-#     # execute only if run as a script
-#     if len(sys.argv) == 1:
-#         print('Running SiMon in the interactive mode...')
-#         s = SiMon()
-#         s.interactive_mode()
-#     elif len(sys.argv) > 1:
-#         if sys.argv[1] in ['start', 'stop']:
-#             # python daemon will handle these two arguments
-#             SiMon.daemon_mode(os.getcwd())
-#         elif sys.argv[1] in ['interactive', 'i']:
-#             s = SiMon()
-#             s.interactive_mode()
-#         else:
-#             SiMon.print_help()
-#             sys.exit(0)
+if __name__ == "__main__":
+    # execute only if run as a script
+    if len(sys.argv) == 1:
+        print('Running SiMon in the interactive mode...')
+        s = SiMon()
+        s.interactive_mode()
+    elif len(sys.argv) > 1:
+        if sys.argv[1] in ['start', 'stop']:
+            # python daemon will handle these two arguments
+            SiMon.daemon_mode(os.getcwd())
+        elif sys.argv[1] in ['interactive', 'i']:
+            s = SiMon()
+            s.interactive_mode()
+        else:
+            SiMon.print_help()
+            sys.exit(0)
+            
 def interactive():
     s = SiMon()
     s.interactive_mode()
