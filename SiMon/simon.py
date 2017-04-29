@@ -489,7 +489,8 @@ class SiMon(object):
         daemon_runner.daemon_context.files_preserve = [handler.stream]
         daemon_runner.do_action()  # fixed time period of calling run()
 
-if __name__ == "__main__":
+def main():
+# if __name__ == "__main__":
     # execute only if run as a script
     if len(sys.argv) == 1:
         print('Running SiMon in the interactive mode...')
@@ -503,13 +504,10 @@ if __name__ == "__main__":
             s = SiMon()
             s.interactive_mode()
         else:
+            print(sys.argv[1])
             SiMon.print_help()
             sys.exit(0)
             
-def interactive():
-    s = SiMon()
-    s.interactive_mode()
-    
-def daemon():
-    SiMon.daemon_mode(os.getcwd())
+main()
+            
 

@@ -15,14 +15,6 @@ setup(name='astro_simon',
       install_requires=['python-daemon'],
       entry_points = {
       'console_scripts': 
-      ['simon-start = SiMon.simon:daemon',
-      'simon-stop = SiMon.simon:daemon',
-      'simon-interactive = SiMon.simon:interactive'],
+      ['simon = SiMon.simon:main'],
       },
-      # entry_points = """
-#       [console_scripts]
-#       simon-start = SiMon.simon:SiMon.daemon_mode
-#       simon-stop = SiMon.simon:SiMon.daemon_mode
-#       simon-interactive = SiMon.simon:SiMon.interactive_mode
-#       """
       )
