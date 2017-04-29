@@ -23,7 +23,7 @@
 
 To install the latest stable version of **SiMon**, you can do
 
-    pip install astro_simon
+    pip install astro-simon
     
 Or you can install the latest developer version from the git repository using:
 
@@ -35,7 +35,7 @@ Or you can install the latest developer version from the git repository using:
 
 Navigate to the main code directory of SiMon, and execute the script: 
 
-    python python ic_generator_demo.py
+    python ic_generator_demo.py
     
 This will create a grid of pseudo simulations in the directory `examples`.
 
@@ -47,7 +47,11 @@ Edit the global SiMon config file `SiMon.conf` accordingly.
 
 You could run SiMon as a daemon program for a collection of simulations as:
 
-    python simon.py start
+    python simon.py start 
+    
+or
+
+    simon start
     
 
 ### Stop the SiMon Daemon
@@ -55,9 +59,16 @@ You could run SiMon as a daemon program for a collection of simulations as:
 You could run SiMon as a daemon program for a collection of simulations as:
 
     python simon.py stop
+
+or
+
+    simon stop
     
 ### Interactive mode
 Check simulation status and control the simulations manually:
 
     python simon.py [interactive]
 
+or
+
+    simon [interactive]
