@@ -59,15 +59,16 @@ Stop_command: %s
 Max_restarts: %d
     '''
 
-    def __init__(self, simon_dir='.'):
-        self.simon_dir = simon_dir  # the code dir of SiMon
-        self.config_file_global = 'SiMon.conf'  # the global config file name for SiMon
+    def __init__(self, conf_file):
+        self.global_conf_file = conf_file  # the path of the global SiMon.conf
         self.config_file_per_sim = 'SiMon.conf'  # the per-simulation config file name
         self.config = None  # the parsed global config instance
         self.sim_data_dir = None  # simulation data dir
+        self.max_restarts = 5  # maximum attempts a sim will be restarted, beyond which a sim is considered error
 
     def parse_config_file(self):
-        conf_fn = os.path.join(self.simon_dir, self.config_file_global)
+        print self.global_conf_file
+        conf_fn = self.global_conf_file
         conf = cp.ConfigParser()
         if os.path.isfile(conf_fn):
             conf.read(conf_fn)
@@ -87,13 +88,15 @@ Max_restarts: %d
             else:
                 print('Simulation root directory cannot be found in SiMon.conf. Existing...')
                 sys.exit(-1)
+            if self.config.has_option('SiMon', 'Max_restarts'):
+                self.max_restarts = self.config.getint('SiMon', 'Max_restarts')
         else:
-            print('Simulation root directory does not exist. Existing...')
+            print('Global config file %s cannot be found. Existing...' % self.global_conf_file)
             sys.exit(-1)
 
     def generate_simulation_ic(self, code_name, t_end, output_dir, start_cmd, input_file=None, output_file=None,
                                error_file=None, restart_file=None, t_start=0, restart_cmd=None, stop_cmd=None,
-                               niceness=0, max_restarts=5):
+                               niceness=0, max_restarts=None):
         """
         Generate the initial condition of a simulation and write it to the given directory.
         :param code_name: The name of the numerical code, e.g. DemoSimulation
@@ -112,6 +115,8 @@ Max_restarts: %d
                              is considered ERROR
         :return: return 0 if succeed, -1 if failed.
         """
+        if max_restarts is None:
+            max_restarts = self.max_restarts
         if not os.path.isdir(os.path.join(self.sim_data_dir, output_dir)):
             print('Creating directory: %s' % os.path.join(self.sim_data_dir, output_dir))
             os.makedirs(os.path.join(self.sim_data_dir, output_dir))
