@@ -43,26 +43,15 @@ This will create a grid of pseudo simulations in the directory `examples`.
 
 Edit the global SiMon config file `SiMon.conf` accordingly.
 
-### Start the SiMon Daemon
+### Start/Stop the SiMon Daemon
 
-You could run SiMon as a daemon program for a collection of simulations as:
+You could run or stop SiMon as a daemon program for a collection of simulations as:
 
-    python simon.py start 
+    python simon.py start|stop
     
 or
 
-    simon start
-    
-
-### Stop the SiMon Daemon
-
-You could run SiMon as a daemon program for a collection of simulations as:
-
-    python simon.py stop
-
-or
-
-    simon stop
+    simon start|stop
     
 ### Interactive mode
 Check simulation status and control the simulations manually:
