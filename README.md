@@ -47,8 +47,7 @@ Edit the global SiMon config file `SiMon.conf` accordingly.
 
 You could run or stop SiMon as a daemon program for a collection of simulations as:
 
-    python simon.py start|stop
-    
+    python simon.py start|stop    
 or
 
     simon start|stop
@@ -57,7 +56,6 @@ or
 Check simulation status and control the simulations manually:
 
     python simon.py [interactive]
-
 or
 
     simon [interactive]
