@@ -38,7 +38,7 @@ class SiMon(object):
             print('Error: Configuration file SiMon.conf does not exist on the current path: %s' % cwd)
             if raw_input('Would you like to generate the default SiMon.conf file to the current directory? [Y/N] ').lower() == 'y':
                 shutil.copyfile(os.path.join(__simon_dir__, 'SiMon.conf'), os.path.join(cwd, 'SiMon.conf'))
-                print('SiMon.conf is now on the current directly. Please edit it accordingly and restart SiMon.')
+                print('SiMon.conf is now on the current directly. Please edit it accordingly and run ``simon [start|stop]`` again.')
             sys.exit(-1)
         else:
             try:
