@@ -4,6 +4,7 @@ import sys
 import time
 import logging
 import glob
+import shutil
 
 import datetime
 import numpy
@@ -24,31 +25,38 @@ class SiMon(object):
     """
 
     def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
-                 mode='interactive', cwd=None, config_file='SiMon.conf'):
+                 mode='interactive', cwd=os.getcwd(), config_file='SiMon.conf'):
         """
         :param pidfile:
         """
 
         # Only needed in interactive mode
-        # self.config = self.parse_config_file(os.getcwd(), config_file)
-        conf_path = os.path.join(os.getcwd(), config_file)
+        conf_path = os.path.join(cwd, config_file)
         self.config = self.parse_config_file(conf_path)
         
-        # TODO: os.getcwd() gives dir of where the current console is, eg. type simon-interactive on /SiMon will give an error, but on SiMon/Simon dir it can work.
         if self.config is None:
-            print('Error: Configure file SiMon.conf does not exist.', conf_path)
+            print('Error: Configuration file SiMon.conf does not exist on the current path: %s' % cwd)
+            if raw_input('Would you like to generate the default SiMon.conf file to the current directory? [Y/N] ').lower() == 'y':
+                shutil.copyfile(os.path.join(__simon_dir__, 'SiMon.conf'), os.path.join(cwd, 'SiMon.conf'))
+                print('SiMon.conf is now on the current directly. Please edit it accordingly and restart SiMon.')
             sys.exit(-1)
         else:
             try:
                 cwd = self.config.get('SiMon', 'Root_dir')
             except cp.NoOptionError:
-                print('Item Root_dir is missing in configure file SiMon.conf. SiMon cannot start. Exiting...')
+                print('Item Root_dir is missing in configuration file SiMon.conf. SiMon cannot start. Exiting...')
                 sys.exit(-1)
         # make sure that cwd is the absolute path
         if not os.path.isabs(cwd):
-            cwd = os.path.join(__simon_dir__, cwd)
+            cwd = os.path.join(os.getcwd(), cwd)  # now cwd is the simulation data root directory
         if not os.path.isdir(cwd):
-            print('Simulation root directory does not exist. Existing...')
+            if raw_input('Simulation root directory does not exist. '
+                         'Would you like to generate test simulations on the current directory? [Y/N] ').lower() == 'y':
+                import ic_generator_demo
+                ic_generator_demo.generate_ic(cwd)
+                print('Demo simulations generated. Please start them with ``simon start``')
+            else:
+                print('Exiting...')
             sys.exit(-1)
 
         self.module_dict = self.register_modules()
@@ -67,7 +75,6 @@ class SiMon(object):
         self.mode = mode
         self.cwd = cwd
         self.inst_id = 0
-        self.tcrit = 100
         self.logger = None
         self.max_concurrent_jobs = 2
 
@@ -128,20 +135,15 @@ class SiMon(object):
         :return: A dict-like mapping between the name of the code and the filename of the module.
         """
         mod_dict = dict()
-        module_candidates = glob.glob('module_*.py')
+        module_candidates = glob.glob(os.path.join(__simon_dir__, 'module_*.py'))
         for mod_name in module_candidates:
+            sys.path.append(__simon_dir__)
             sys.path.append(os.getcwd())
-            import importlib
-            mod =  __import__(mod_name.split('.')[0])
-            
-            # mod = __import__(mod_name.split('.')[0])
-            
-            #print('mod_dict', mod, mod_dict)
-            # mod = __import__(module_path)
+            mod_name = os.path.basename(mod_name)
+            mod = __import__(mod_name.split('.')[0])
             if hasattr(mod, '__simulation__'):
                 # it is a valid SiMon module
                 mod_dict[mod.__simulation__] = mod_name.split('.')[0]
-            
         return mod_dict
 
     def traverse_simulation_dir_tree(self, pattern, base_dir, files):
@@ -162,7 +164,6 @@ class SiMon(object):
                     if sim_config is not None:
                         try:
                             code_name = sim_config.get('Simulation', 'Code_name')
-
                             if code_name in self.module_dict:
                                 sim_inst_mod = __import__(self.module_dict[code_name])
                                 sim_inst = getattr(sim_inst_mod, code_name)(id, filename, fullpath,
@@ -170,6 +171,10 @@ class SiMon(object):
                                                                             logger=self.logger)
                         except cp.NoOptionError:
                             pass
+
+                    if sim_inst is None:
+                        print('Error: cannot find the module for simulation code name %s' % code_name)
+                        sys.exit(-1)
                     self.sim_inst_dict[id] = sim_inst
                     sim_inst.id = id
                     sim_inst.fulldir = fullpath
@@ -209,6 +214,7 @@ class SiMon(object):
         self.sim_inst_dict[0] = self.sim_tree  # map ID=0 to the root node
         self.sim_inst_parent_dict[self.cwd.strip()] = self.sim_tree  # map the current dir to be the sim tree root
         self.inst_id = 0
+
         os.path.walk(self.cwd, self.traverse_simulation_dir_tree, '*')
 
         # Synchronize the status tree (status propagation)
@@ -459,9 +465,9 @@ class SiMon(object):
         if necessary.
         :return:
         """
-        app = SiMon(pidfile=os.path.join(os.getcwd(), 'SiMon_daemon.pid'),
-                    stdout=os.path.join(os.getcwd(), 'SiMon.out.txt'),
-                    stderr=os.path.join(os.getcwd(), 'SiMon.err.txt'),
+        app = SiMon(pidfile=os.path.join(simon_dir, 'SiMon_daemon.pid'),
+                    stdout=os.path.join(simon_dir, 'SiMon.out.txt'),
+                    stderr=os.path.join(simon_dir, 'SiMon.err.txt'),
                     cwd=simon_dir,
                     mode='daemon')
         # log system
@@ -489,17 +495,33 @@ class SiMon(object):
         daemon_runner.daemon_context.files_preserve = [handler.stream]
         daemon_runner.do_action()  # fixed time period of calling run()
 
+
 def main():
-# if __name__ == "__main__":
     # execute only if run as a script
     if len(sys.argv) == 1:
         print('Running SiMon in the interactive mode...')
         s = SiMon()
         s.interactive_mode()
     elif len(sys.argv) > 1:
-        if sys.argv[1] in ['start', 'stop']:
-            # python daemon will handle these two arguments
-            SiMon.daemon_mode(os.getcwd())
+        if sys.argv[1] in ['start', 'stop', 'restart']:
+            if sys.argv[1] == 'start':
+                # test if the daemon is already started
+                if os.path.isfile('SiMon_daemon.pid'):
+                    try:
+                        f_pid = open('SiMon_daemon.pid')
+                        simon_pid = int(f_pid.readline())
+                        os.kill(simon_pid, 0)  # test whether the process exists, does not kill the process
+                        print('Error: the SiMon daemon is already running with process ID: %d' % simon_pid)
+                        print('Please make sure that you stop the daemon before starting it. Exiting...')
+                        sys.exit(-1)
+                    except (ValueError, OSError):
+                        pass
+            # The python-daemon library will handle the start/stop/restart arguments by itself
+            try:
+                SiMon.daemon_mode(os.getcwd())
+            except runner.DaemonRunnerStopFailureError:
+                print('Error: the SiMon daemon is not running. There is no need to stop it.')
+                sys.exit(-1)
         elif sys.argv[1] in ['interactive', 'i']:
             s = SiMon()
             s.interactive_mode()
@@ -507,7 +529,8 @@ def main():
             print(sys.argv[1])
             SiMon.print_help()
             sys.exit(0)
-            
-main()
+
+if __name__ == "__main__":
+    main()
             
 
