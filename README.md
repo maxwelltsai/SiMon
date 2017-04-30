@@ -4,16 +4,17 @@
 
 **SiMon** is an automatic monitor/scheduler/pipeline for astrophysical N-body simulations. In astrophysics, it is common that a grid of simulations is needed to explore a parameter space. SiMon facilitates the paramater-space study simulations in the follow ways:
 
-* Generate an overview of the current simulation status
+* Generate a real-time overview of the current simulation status
 * Automatically restart the simulation if the code crashes
 * Invoke the data processing script (e.g. create plots) once the simulation is finish
 * Notify the user (e.g. by email) once the simulations are finished
-* Report to the user if a certain simulation cannot be restarted (e.g. code keeps crashing for some reasons)
-* Allow the user to define the maximum concurrent instances of simulation, the maximum CPU and GPU usage for each simulation instance
-* When the total number of simulations exceeds the capacity of machine concurrency, automatically schedule the next simulation when the current simulation is finished.
+* Report to the user if a certain simulation cannot be restarted (e.g. code keeps crashing/stalling for some reasons)
+* Parallelize the launching of multiple simulations according to the configured computational resources
 * Detect and kill stalled simulations (simulations that utilize 100% CPU/GPU but do not make any progress for a long period of time)
 
-**SiMon** is highly modular. Arbitrary N-body codes can be supported by **SiMon** by overriding `module_common.py`.
+**SiMon** is highly modular. Arbitrary numerical codes can be supported by **SiMon** by overriding `module_common.py` (python programming needed) or editing config files (no programming needed).
+
+**SiMon** is originally built for carrying out large ensembles of astrophysical N-body simulations. However, it has now been generalized to carrying out any computational intensive numerical jobs (e.g., scheduling an observational data reduction pipeline).
 
 # Installation
 
@@ -31,31 +32,21 @@ Or you can install the latest developer version from the git repository using:
     
 # Usage
 
-### Generate a grid of demo simulations (Optional)
+**SiMon** is simple to use! To start the interacive dashboard, you simply type the following in your terminal:
 
-Navigate to the main code directory of SiMon, and execute the script: 
-
-    python ic_generator_demo.py
+    simon
     
-This will create a grid of pseudo simulations in the directory `examples`.
-
-### Edit the config file
-
-Edit the global SiMon config file `SiMon.conf` accordingly.
-
-### Start/Stop the SiMon Daemon
-
-You could run or stop SiMon as a daemon program for a collection of simulations as:
-
-    python simon.py start|stop    
-or
-
-    simon start|stop
+If it is your first time running **SiMon**, it will offer to generate a default config file and some demo simulations on the current directly. Just proceed according to the interactive instructions. You could edit the global config file `SiMon.conf` using your favorite text editor accordingly. Then, your simulations can be launched and monitored automatically with
     
-### Interactive mode
-Check simulation status and control the simulations manually:
+    simon start
 
-    python simon.py [interactive]
-or
+This will start **SiMon** as a daemon program, which schedule and monitor all simulations automatically without human supervision. The daemon can be stopped with
 
-    simon [interactive]
+    simon stop
+    
+The interactive dashboard of **SiMon** can be launched at any time (before, during, and after the simulations) with this simple command:
+
+    simon
+    
+That's it!
+
