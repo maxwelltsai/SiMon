@@ -422,6 +422,8 @@ class SimulationTask(object):
         else:
             # TODO: code will not goes here because no functions in daemon mode will call inst_delete
             shutil.rmtree(self.full_dir)
+            msg = 'Instance %d deleted.' % self.id
+            print(msg)
             return 0
         return 0
 

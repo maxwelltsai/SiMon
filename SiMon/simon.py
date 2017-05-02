@@ -269,8 +269,8 @@ class SiMon(object):
             sys.stdout.write('\n=======================================\n')
             sys.stdout.write('\tList Instances (L), \n\tSelect Instance (S), '
                              '\n\tNew Run (N), \n\tRestart (R), \n\tCheck status (C), '
-                             '\n\tExecute (X), \n\tStop Simulation (T), \n\tDelete Instance (D), \n\tKill Instance (K), '
-                             '\n\tBackup Restart File (B), \n\tPost Processing (P), \n\tQuit (Q): \n')
+                             '\n\tStop Simulation (T), \n\tDelete Instance (D), \n\tKill Instance (K), '
+                             '\n\tBackup Restart File (B), \n\tPost Processing (P), \n\tUNIX Shell (X), \n\tQuit (Q): \n')
             opt = raw_input('\nPlease choose an action to continue: ').lower()
 
         return opt
@@ -290,7 +290,7 @@ class SiMon(object):
         if opt in ['s', 'n', 'r', 'c', 'x', 't', 'd', 'k', 'b', 'p']:
             if self.mode == 'interactive':
                 if self.selected_inst is None or len(self.selected_inst) == 0 or opt == 's':
-                    self.selected_inst = self.id_input('Please specify a list of IDs: ')
+                    self.selected_inst = self.id_input('Please specify a list of IDs (seperated by comma): ')
                     sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
 
         # TODO: use message? to rewrite this part in a smarter way
