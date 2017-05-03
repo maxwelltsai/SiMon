@@ -103,7 +103,7 @@ class SimulationTask(object):
 
             prefix = 'T: %g >>> %g' % (int(self.t), int(self.t_max))
             suffix = mtime_str
-            progress_bar = Utilities.progress_bar(self.t, self.t_max, prefix=prefix, suffix=suffix)
+            progress_bar = Utilities.progress_bar(self.t, self.t_max, self.t_min, prefix=prefix, suffix=suffix)
 
             info = "%s  [%s] \n%s %s\t" % (Utilities.highlighted_text(str(self.name), 'cyan', bold=True),
                                            SimulationTask.STATUS_LABEL[self.status], placeholder_space, progress_bar)
@@ -216,7 +216,7 @@ class SimulationTask(object):
                 except (ValueError, OSError):
                     # process not started yet
                     # check how many times the simulation has been restarted
-                    restarts = glob.glob('restart*')
+                    restarts = glob.glob('restart*/')
                     n_restarts = len(restarts)
                     print n_restarts, self.config.getint('Simulation', 'Max_restarts')
                     # check whether it exceeds the maximum times of restarts specified in the per-sim config file
@@ -422,8 +422,6 @@ class SimulationTask(object):
         else:
             # TODO: code will not goes here because no functions in daemon mode will call inst_delete
             shutil.rmtree(self.full_dir)
-            msg = 'Instance %d deleted.' % self.id
-            print(msg)
             return 0
         return 0
 
