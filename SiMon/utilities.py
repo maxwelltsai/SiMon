@@ -6,22 +6,24 @@ Utility class.
 class Utilities(object):
 
     @staticmethod
-    def progress_bar(count, total, prefix='', suffix=''):
+    def progress_bar(val, val_max, val_min=0, prefix='', suffix='', bar_len=30):
         """
         Displays a progress bar in the simulation tree.
-        :param count:
-        :param total:
+        :param val:
+        :param val_max:
+        :param val_min:
         :param prefix:
         :param suffix:
+        :param bar_len:
         :return:
         """
-        bar_len = 30
-        if total == 0:
+        if val_max == 0:
             return ''
         else:
-            filled_len = int(round(bar_len * count / float(total)))
+            skipped_len = int(round(bar_len * val_min) / float(val_max))
+            filled_len = int(round(bar_len * (val - val_min) / float(val_max)))
             # percents = round(100.0 * count / float(total), 1)
-            bar = '|' * filled_len + '.' * (bar_len - filled_len)
+            bar = '.' * skipped_len + '|' * filled_len + '.' * (bar_len - filled_len - skipped_len)
             # return '[%s] %s%s %s\r' % (bar, percents, '%', suffix)
             return '%s [%s] %s\r' % (prefix, bar, suffix)
 
