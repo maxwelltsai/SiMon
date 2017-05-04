@@ -1,7 +1,7 @@
 """
 Utility class.
 """
-import sys
+
 
 class Utilities(object):
 
@@ -39,33 +39,3 @@ class Utilities(object):
             return '%s%s%s' % (color_codes[colors.index(color)], text, color_codes[colors.index('reset')])
         else:
             return '%s%s%s' % (color_codes_bold[colors.index(color)], text, color_codes_bold[colors.index('reset')])
-
-    @staticmethod
-    def generate_conf():
-        config_file_template = """
-         # Global config file for SiMon
-
-         [SiMon]
-
-         # The simulation data root directory
-         Root_dir: examples/demo_simulations
-
-         # The time interval for the SiMon daemon to check all the simulations (in seconds) [Default: 180]
-         Daemon_sleep_time: 10
-
-         # The number of simulations to be carried out simultaneously [Default: 2]
-         Max_concurrent_jobs: 2
-
-         # The maximum number of times a simulation will be restarted (a simulation is marked as ERROR when exceeding this limit) [Default: 5]
-         Max_restarts: 1
-
-         # Log level of the daemon: INFO/WARNING/ERROR/CRITICAL [default: INFO]
-         Log_level: INFO
-        """
-        try:
-            target = open('SiMon.conf', 'w')
-            target.write(config_file_template)
-            target.close()
-        except:
-            print("Unexpected error:", sys.exc_info()[0])
-
