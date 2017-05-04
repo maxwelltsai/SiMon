@@ -43,24 +43,24 @@ class Utilities(object):
     @staticmethod
     def generate_conf():
         config_file_template = """
-         # Global config file for SiMon
+# Global config file for SiMon
 
-         [SiMon]
+[SiMon]
 
-         # The simulation data root directory
-         Root_dir: examples/demo_simulations
+# The simulation data root directory
+Root_dir: examples/demo_simulations
 
-         # The time interval for the SiMon daemon to check all the simulations (in seconds) [Default: 180]
-         Daemon_sleep_time: 10
+# The time interval for the SiMon daemon to check all the simulations (in seconds) [Default: 180]
+Daemon_sleep_time: 10
 
-         # The number of simulations to be carried out simultaneously [Default: 2]
-         Max_concurrent_jobs: 2
+# The number of simulations to be carried out simultaneously [Default: 2]
+Max_concurrent_jobs: 2
 
-         # The maximum number of times a simulation will be restarted (a simulation is marked as ERROR when exceeding this limit) [Default: 5]
-         Max_restarts: 1
+# The maximum number of times a simulation will be restarted (a simulation is marked as ERROR when exceeding this limit) [Default: 5]
+Max_restarts: 1
 
-         # Log level of the daemon: INFO/WARNING/ERROR/CRITICAL [default: INFO]
-         Log_level: INFO
+# Log level of the daemon: INFO/WARNING/ERROR/CRITICAL [default: INFO]
+Log_level: INFO
         """
         try:
             target = open('SiMon.conf', 'w')
