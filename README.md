@@ -26,7 +26,7 @@ Or you can install the latest developer version from the git repository using:
 
     pip install https://github.com/maxwelltsai/SiMon/archive/master.zip
     
-# Usage
+# Usage - Start with an example code
 
 **SiMon** is simple to use! To start the interacive dashboard, you simply type the following in your terminal:
 
@@ -44,5 +44,9 @@ The interactive dashboard of **SiMon** can be launched at any time (before, duri
 
     simon
     
+# Usage - Apply to your code
+
+
+
 That's it! Go and take a beer :)
 
