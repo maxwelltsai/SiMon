@@ -6,6 +6,7 @@ import logging
 import glob
 import shutil
 
+from utilities import Utilities
 import datetime
 import numpy
 try:
@@ -17,7 +18,6 @@ from daemon import runner
 from module_common import SimulationTask
 
 __simon_dir__ = os.path.dirname(os.path.abspath(__file__))
-
 
 class SiMon(object):
     """
@@ -36,9 +36,10 @@ class SiMon(object):
         
         if self.config is None:
             print('Error: Configuration file SiMon.conf does not exist on the current path: %s' % cwd)
-            if raw_input('Would you like to generate the default SiMon.conf file to the current directory? [Y/N] ').lower() == 'y':
-                shutil.copyfile(os.path.join(__simon_dir__, 'SiMon.conf'), os.path.join(cwd, 'SiMon.conf'))
-                print('SiMon.conf is now on the current directly. Please edit it accordingly and run ``simon [start|stop]`` again.')
+            if raw_input('Would you like to generate the default SiMon.conf file to the current directory? [Y/N] ').lower() == 'y':                
+                # shutil.copyfile(os.path.join(__simon_dir__, 'SiMon.conf'), os.path.join(cwd, 'SiMon.conf'))
+                Utilities.generate_conf()
+                print('SiMon.conf is now on the current directly. Please edit it accordingly and run ``simon [start|stop]``.')
             sys.exit(-1)
         else:
             try:
