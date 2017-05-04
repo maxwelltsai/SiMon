@@ -18,13 +18,9 @@
 
 # Installation
 
-**SiMon** depends on `python-daemon`. If you do not have this installed in your Python environment, you could install with
-
-    pip install python-daemon
-
 To install the latest stable version of **SiMon**, you can do
 
-    pip install astro-simon
+    pip install astrosimon
     
 Or you can install the latest developer version from the git repository using:
 
@@ -48,5 +44,5 @@ The interactive dashboard of **SiMon** can be launched at any time (before, duri
 
     simon
     
-That's it!
+That's it! Go and take a beer :)
 
