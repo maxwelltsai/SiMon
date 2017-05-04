@@ -32,7 +32,7 @@ Or you can install the latest developer version from the git repository using:
 
     simon
     
-If it is your first time running **SiMon**, it will offer to generate a default config file and some demo simulations on the current directly. Just proceed according to the interactive instructions. You could edit the global config file `SiMon.conf` using your favorite text editor accordingly. Then, your simulations can be launched and monitored automatically with
+If it is your first time running **SiMon**, it will offer to generate a default config file and some demo simulations on the current directly. Just proceed according to the interactive instructions. Then, your simulations can be launched and monitored automatically with
     
     simon start
 
@@ -45,7 +45,11 @@ The interactive dashboard of **SiMon** can be launched at any time (before, duri
     simon
     
 # Usage - Apply to your code
+Edit the global config file `SiMon.conf` using your favorite text editor, change default
 
+    Root_dir: examples/demo_simulations
+    
+to be the dir of where your code located, then start simon again!
 
 
 That's it! Go and take a beer :)
