@@ -252,10 +252,11 @@ class SiMon(object):
 
     @staticmethod
     def print_help():
-        print('Usage: python simon.py start|stop|interactive|help')
+        print('Usage: python simon.py [start|stop|interactive|help]')
+        print('\tTo show an overview of job status and quit: python simon.py (no arguments)')
         print('\tstart: start the daemon')
         print('\tstop: stop the daemon')
-        print('\tinteractive: run in interactive mode (no daemon) [default]')
+        print('\tinteractive/i/-i: run in interactive mode (no daemon)')
         print('\thelp: print this help message')
 
     @staticmethod
@@ -442,7 +443,7 @@ class SiMon(object):
             else:
                 time.sleep(180)
 
-    def interactive_mode(self):
+    def interactive_mode(self, autoquit=False):
         """
         Run SiMon in the interactive mode. In this mode, the user can see an overview of the simulation status from the
         terminal, and control the simulations accordingly.
@@ -453,9 +454,10 @@ class SiMon(object):
         self.build_simulation_tree()
         self.print_sim_status_overview(0)
         choice = ''
-        while choice != 'q':
-            choice = SiMon.print_task_selector()
-            self.task_handler(choice)
+        if autoquit is False:
+            while choice != 'q':
+                choice = SiMon.print_task_selector()
+                self.task_handler(choice)
 
     @staticmethod
     def daemon_mode(simon_dir):
@@ -502,7 +504,7 @@ def main():
     if len(sys.argv) == 1:
         print('Running SiMon in the interactive mode...')
         s = SiMon()
-        s.interactive_mode()
+        s.interactive_mode(autoquit=True)
     elif len(sys.argv) > 1:
         if sys.argv[1] in ['start', 'stop', 'restart']:
             if sys.argv[1] == 'start':
@@ -523,7 +525,7 @@ def main():
             except runner.DaemonRunnerStopFailureError:
                 print('Error: the SiMon daemon is not running. There is no need to stop it.')
                 sys.exit(-1)
-        elif sys.argv[1] in ['interactive', 'i']:
+        elif sys.argv[1] in ['interactive', 'i', '-i']:
             s = SiMon()
             s.interactive_mode()
         else:
