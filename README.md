@@ -32,6 +32,10 @@ Or you can install the latest developer version from the git repository using:
 
     simon
     
+If you would just like to see the currently running jobs, this would help:
+
+    simon | grep RUN
+    
 If it is your first time running **SiMon**, it will offer to generate a default config file and some demo simulations on the current directly. Just proceed according to the interactive instructions. Then, your simulations can be launched and monitored automatically with
     
     simon start
