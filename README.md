@@ -32,7 +32,7 @@ Or you can install the latest developer version from the git repository using:
 
     simon
     
-If you would just like to see the currently running jobs, this would help:
+If you would just like to see the currently running jobs, following command will help, the same scheme also applies to check other status such as NEW, DONE, STOP:
 
     simon | grep RUN
     
