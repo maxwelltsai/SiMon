@@ -4,11 +4,9 @@ import sys
 import time
 import logging
 import glob
-import shutil
 
 from utilities import Utilities
-import datetime
-import numpy
+import numpy as np
 try:
     import configparser as cp  # Python 3 only
 except ImportError:
@@ -18,6 +16,7 @@ from daemon import runner
 from module_common import SimulationTask
 
 __simon_dir__ = os.path.dirname(os.path.abspath(__file__))
+__user_shell_dir__ = os.getcwd()
 
 class SiMon(object):
     """
@@ -39,7 +38,7 @@ class SiMon(object):
             if raw_input('Would you like to generate the default SiMon.conf file to the current directory? [Y/N] ').lower() == 'y':                
                 # shutil.copyfile(os.path.join(__simon_dir__, 'SiMon.conf'), os.path.join(cwd, 'SiMon.conf'))
                 Utilities.generate_conf()
-                print('SiMon.conf is now on the current directly. Please edit it accordingly and run ``simon [start|stop]``.')
+                print('SiMon.conf is now on the current directly. Please edit it accordingly and run ``simon [start|stop|interactive|i]``.')
             sys.exit(-1)
         else:
             try:
@@ -85,30 +84,6 @@ class SiMon(object):
         os.chdir(cwd)
 
     @staticmethod
-    def id_input(prompt):
-        """
-        Prompt to the user to input the simulation ID (in the interactive mode)
-        """
-        confirmed = False
-        vec_index_selected = []
-        while confirmed is False:
-            response = raw_input(prompt)
-            fragment = response.split(',')
-            for token_i in fragment:
-                if '-' in token_i:  # it is a range
-                    limits = token_i.split('-')
-                    if len(limits) == 2:
-                        if int(limits[0].strip()) < int(limits[1].strip()):
-                            subrange = range(int(limits[0].strip()), int(limits[1].strip())+1)
-                            for j in subrange:
-                                vec_index_selected.append(j)
-                else:
-                    vec_index_selected.append(token_i.strip())
-            if raw_input('Your input is \n\t'+str(vec_index_selected)+', confirm? [Y/N] ').lower() == 'y':
-                confirmed = True
-                return map(int, vec_index_selected)
-
-    @staticmethod
     def parse_config_file(config_file):
         """
         Parse the configure file (SiMon.conf) for starting SiMon. The basic information of Simulation root directory
@@ -137,6 +112,9 @@ class SiMon(object):
         """
         mod_dict = dict()
         module_candidates = glob.glob(os.path.join(__simon_dir__, 'module_*.py'))
+        module_cwd = glob.glob(os.path.join(__user_shell_dir__, 'module_*.py'))  # load the modules also from cwd
+        for m_cwd in module_cwd:
+            module_candidates.append(m_cwd)
         for mod_name in module_candidates:
             sys.path.append(__simon_dir__)
             sys.path.append(os.getcwd())
@@ -172,10 +150,10 @@ class SiMon(object):
                                                                             logger=self.logger)
                         except cp.NoOptionError:
                             pass
-
+                    else:
+                        continue
                     if sim_inst is None:
-                        print('Error: cannot find the module for simulation code name %s' % code_name)
-                        sys.exit(-1)
+                        continue
                     self.sim_inst_dict[id] = sim_inst
                     sim_inst.id = id
                     sim_inst.fulldir = fullpath
@@ -272,7 +250,8 @@ class SiMon(object):
             sys.stdout.write('\tList Instances (L), \n\tSelect Instance (S), '
                              '\n\tNew Run (N), \n\tRestart (R), \n\tCheck status (C), '
                              '\n\tStop Simulation (T), \n\tDelete Instance (D), \n\tKill Instance (K), '
-                             '\n\tBackup Restart File (B), \n\tPost Processing (P), \n\tUNIX Shell (X), \n\tQuit (Q): \n')
+                             '\n\tBackup Restart File (B), \n\tPost Processing (P), \n\tUNIX Shell (X), '
+                             '\n\tQuit (Q): \n')
             opt = raw_input('\nPlease choose an action to continue: ').lower()
 
         return opt
@@ -292,7 +271,7 @@ class SiMon(object):
         if opt in ['s', 'n', 'r', 'c', 'x', 't', 'd', 'k', 'b', 'p']:
             if self.mode == 'interactive':
                 if self.selected_inst is None or len(self.selected_inst) == 0 or opt == 's':
-                    self.selected_inst = self.id_input('Please specify a list of IDs (seperated by comma): ')
+                    self.selected_inst = Utilities.id_input('Please specify a list of IDs (seperated by comma): ')
                     sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
 
         # TODO: use message? to rewrite this part in a smarter way
@@ -388,7 +367,7 @@ class SiMon(object):
             if inst.status == SimulationTask.STATUS_RUN and inst.cid == -1:
                 concurrent_jobs += 1
 
-        index_niceness_sorted = numpy.argsort(sim_niceness_vec)
+        index_niceness_sorted = np.argsort(sim_niceness_vec)
         for ind in index_niceness_sorted:
             if self.sim_inst_dict[ind].status != SimulationTask.STATUS_DONE and self.sim_inst_dict[ind].id > 0:
                 schedule_list.append(self.sim_inst_dict[ind])

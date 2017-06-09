@@ -4,17 +4,14 @@ from setuptools import setup, find_packages
 # packages are code source
 
 setup(name='astrosimon',
-      version='0.1.0',
-      description='A simulation monitor for astrophysical N-body simulations',
+      version='0.3.dev0',
+      description='Simulation Monitor for computational astrophysics',
       url='https://github.com/maxwelltsai/SiMon',
       author='Maxwell Cai, Penny Qian',
       author_email='pennyqxr@gmail.com',
-      license='',
+      license='BSD 2-Clause',
       packages=find_packages(),
       zip_safe=False,
-      install_requires=['python-daemon'],
-      entry_points = {
-      'console_scripts': 
-      ['simon = SiMon.simon:main'],
-      },
+      install_requires=['python-daemon', 'numpy'],
+      entry_points={'console_scripts': ['simon = SiMon.simon:main'], },
       )
