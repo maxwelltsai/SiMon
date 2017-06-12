@@ -308,10 +308,16 @@ class SimulationTask(object):
                 self.mtime = os.stat(output_file).st_mtime
         if self.config.has_option('Simulation', 'Timestamp_started'):
             self.ctime = self.config.getfloat('Simulation', 'Timestamp_started')
-        if self.config.has_option('Simulation', 'PID'):
-            pid = self.config.getint('Simulation', 'PID')
-            if pid == 0 and self.mtime == 0:
-                self.status = SimulationTask.STATUS_NEW
+        if os.path.isfile('.process.pid'):
+            # if the PID file exists, try to read the process ID
+            f_pid = open('.process.pid', 'r')
+            pid = int(f_pid.readline().strip())
+            f_pid.close()
+        # if self.config.has_option('Simulation', 'PID'):
+        #    pid = self.config.getint('Simulation', 'PID')
+            if pid == 0:
+                if self.mtime == 0:
+                    self.status = SimulationTask.STATUS_NEW
             else:
                 try:
                     os.kill(pid, 0)
