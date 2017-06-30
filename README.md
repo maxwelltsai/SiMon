@@ -60,3 +60,6 @@ to be the dir of where your code located, then start simon again!
 
 That's it! Go and take a beer :)
 
+
+# Paper
+https://arxiv.org/abs/1706.09831
