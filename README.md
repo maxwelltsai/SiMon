@@ -62,4 +62,4 @@ That's it! Go and take a beer :)
 
 
 # Paper
-https://arxiv.org/abs/1706.09831
+http://adsabs.harvard.edu/abs/2017PASP..129i4503Q
