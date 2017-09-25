@@ -97,18 +97,18 @@ class SimulationTask(object):
         if level == 0:
             ret = '[%s] %s\n' % (SimulationTask.STATUS_LABEL[self.status], self.full_dir)
         else:
-            placeholder_dash = "|---" + '-' * (level * 4)
-            placeholder_space = "    " + ' ' * (level * 4)
-            mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%Y-%m-%d %H:%M:%S')
+            # placeholder_dash = "|" + '-' * (level * 4)
+            placeholder_dash = "| "
+            placeholder_space = ' ' * ((level-1) * 4)
+            mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%m-%d %H:%M')
 
-            prefix = 'T: %g >>> %g' % (int(self.t), int(self.t_max))
+            prefix = 'T: %g >> %g >> %g' % (int(self.t_min), int(self.t), int(self.t_max))
             suffix = mtime_str
             progress_bar = Utilities.progress_bar(self.t, self.t_max, self.t_min, prefix=prefix, suffix=suffix)
 
-            info = "%s  [%s] \n%s %s\t" % (Utilities.highlighted_text(str(self.name), 'cyan', bold=True),
-                                           SimulationTask.STATUS_LABEL[self.status], placeholder_space, progress_bar)
+            info = "%s    \t%s\t" % (Utilities.highlighted_text(str(self.name), 'cyan', bold=True), progress_bar)
 
-            ret = "%d%s%s\n" % (self.id, placeholder_dash, info)
+            ret = "[%s] %s%d%s%s\n" % (SimulationTask.STATUS_LABEL[self.status], placeholder_space, self.id, placeholder_dash, info)
             # ret = "    "*level+str(self.id)+repr(self.name)+"\n"
         for child in self.restarts:
             ret += child.__repr__(level + 1)
@@ -294,7 +294,9 @@ class SimulationTask(object):
     def sim_get_model_start_time(self):
         """
         Get the t_min value of the current model
-        :return: The starting time of the current model. The user is required to implement this method properly.
+        :return: The starting time of the current model. By default, t_min = 0. But if a model is restarted, then
+        it is possible that t_min equals the time of the restartable snapshot.
+        The user is required to implement this method properly.
         """
         if self.t_min != 0.0:
             return self.t_min

@@ -26,7 +26,7 @@ Log_level: INFO
 class Utilities(object):
 
     @staticmethod
-    def progress_bar(val, val_max, val_min=0, prefix='', suffix='', bar_len=30):
+    def progress_bar(val, val_max, val_min=0, prefix='', suffix='', bar_len=20):
         """
         Displays a progress bar in the simulation tree.
         :param val: current value
