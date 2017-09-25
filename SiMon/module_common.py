@@ -72,7 +72,7 @@ class SimulationTask(object):
         self.t = 0  # the current model time
         self.t_min = t_min  # minimum time for the simulation to start
         self.t_max = t_max  # maximum time marking the completion of the simulation
-        self.t_max_extended = t_max # extended t_max by restarts
+        self.t_max_extended = t_max  # extended t_max by restarts
         self.mtime = 0  # timestamp of the last modification of the simulation output files
         self.ctime = 0  # timestamp of the creation of the simulation output files
 
@@ -290,6 +290,26 @@ class SimulationTask(object):
                     self.t = float(res[0])
         os.chdir(orig_dir)
         return self.t
+
+    def sim_get_model_start_time(self):
+        """
+        Get the t_min value of the current model
+        :return: The starting time of the current model. The user is required to implement this method properly.
+        """
+        if self.t_min != 0.0:
+            return self.t_min
+        else:
+            return 0.0
+
+    def sim_get_model_termination_time(self):
+        """
+
+        Get the time t_max by which the model is considered finished. Normally this value is obtained by parsing the
+        config file, but the user may override it.
+
+        :return: The termination time
+        """
+        return self.t_max
 
     def sim_get_status(self):
         """
