@@ -324,6 +324,7 @@ class SimulationTask(object):
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
         self.t = self.sim_get_model_time()
+        self.t_min = self.sim_get_model_start_time()
         if self.config.has_option('Simulation', 'Output_file'):
             output_file = self.config.get('Simulation', 'Output_file')
             if os.path.isfile(output_file):
