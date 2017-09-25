@@ -1,3 +1,14 @@
+0.3 (2017-6-9)
+----------------
+- Fix the logic of the interactive mode
+- Various bug fixes
+
+0.2 (2017-4-25)
+----------------
+
+- Separate the core of SiMon and custom-made modules. 
+- Users can run SiMon on any directory by simply tying `simon`
+
 0.1 (2016-10-24)
 ----------------
 

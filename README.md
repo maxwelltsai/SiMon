@@ -28,9 +28,13 @@ Or you can install the latest developer version from the git repository using:
     
 # Usage - Start with an example code
 
-**SiMon** is simple to use! To start the interacive dashboard, you simply type the following in your terminal:
+**SiMon** is simple to use! To display an overview of all managed jobs, you simply type the following in your terminal:
 
     simon
+    
+If you would just like to see the currently running jobs, following command will help, the same scheme also applies to check other status such as NEW, DONE, STOP:
+
+    simon | grep RUN
     
 If it is your first time running **SiMon**, it will offer to generate a default config file and some demo simulations on the current directly. Just proceed according to the interactive instructions. Then, your simulations can be launched and monitored automatically with
     
@@ -42,7 +46,9 @@ This will start **SiMon** as a daemon program, which schedule and monitor all si
     
 The interactive dashboard of **SiMon** can be launched at any time (before, during, and after the simulations) with this simple command:
 
-    simon
+    simon -i
+    
+Or if you prefer: `simon i` or `simon interactive`.
     
 # Usage - Apply to your code
 Edit the global config file `SiMon.conf` using your favorite text editor, change default
@@ -54,3 +60,6 @@ to be the dir of where your code located, then start simon again!
 
 That's it! Go and take a beer :)
 
+
+# Paper
+http://adsabs.harvard.edu/abs/2017PASP..129i4503Q
