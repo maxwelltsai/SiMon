@@ -108,7 +108,7 @@ class SimulationTask(object):
 
             info = "%s    \t%s\t" % (Utilities.highlighted_text(str(self.name), 'cyan', bold=True), progress_bar)
 
-            ret = "[%s] %s%d%s%s\n" % (SimulationTask.STATUS_LABEL[self.status], placeholder_space, self.id, placeholder_dash, info)
+            ret = "[%s]\t%s%d%s%s\n" % (SimulationTask.STATUS_LABEL[self.status], placeholder_space, self.id, placeholder_dash, info)
             # ret = "    "*level+str(self.id)+repr(self.name)+"\n"
         for child in self.restarts:
             ret += child.__repr__(level + 1)
