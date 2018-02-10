@@ -34,6 +34,9 @@ Timestamp_started = %s
 # The timestamp indicating the last time output files are updated
 Timestamp_last_updated = %s
 
+# The time (in second) beyond which a simulation is considered as stalled
+Stall_time = %d
+
 # The starting time
 T_start = %f
 
@@ -65,6 +68,7 @@ Max_restarts: %d
         self.config = None  # the parsed global config instance
         self.sim_data_dir = None  # simulation data dir
         self.max_restarts = 5  # maximum attempts a sim will be restarted, beyond which a sim is considered error
+        self.stall_time = 6.e6  # Stall time
 
     def parse_config_file(self):
         print self.global_conf_file
@@ -90,13 +94,16 @@ Max_restarts: %d
                 sys.exit(-1)
             if self.config.has_option('SiMon', 'Max_restarts'):
                 self.max_restarts = self.config.getint('SiMon', 'Max_restarts')
+            if self.config.has_option('SiMon', 'Stall_time'):
+                self.stall_time = self.config.getfloat('SiMon', 'Stall_time')
+
         else:
             print('Global config file %s cannot be found. Existing...' % self.global_conf_file)
             sys.exit(-1)
 
     def generate_simulation_ic(self, code_name, t_end, output_dir, start_cmd, input_file=None, output_file=None,
-                               error_file=None, restart_file=None, t_start=0, restart_cmd=None, stop_cmd=None,
-                               niceness=0, max_restarts=None):
+                               error_file=None, restart_file=None, t_stall=None, t_start=0, restart_cmd=None,
+                               stop_cmd=None, niceness=0, max_restarts=None):
         """
         Generate the initial condition of a simulation and write it to the given directory.
         :param code_name: The name of the numerical code, e.g. DemoSimulation
@@ -107,6 +114,8 @@ Max_restarts: %d
         :param output_file: The name of the output file (optional)
         :param error_file: The name of the error message file (optional)
         :param restart_file: The name of the restartable checkpoint file (optional)
+        :param t_stall: How long (in sec) will a simulation be considered stalled since the last time the output file
+                        is updated
         :param t_start: The starting model time (optional, default: 0)
         :param restart_cmd: The UNIX command to restart the simulation
         :param stop_cmd: The UNIX command to request the simulation code to stop the simulation (optional)
@@ -117,6 +126,8 @@ Max_restarts: %d
         """
         if max_restarts is None:
             max_restarts = self.max_restarts
+        if t_stall is None:
+            t_stall = self.stall_time
         if not os.path.isdir(os.path.join(self.sim_data_dir, output_dir)):
             print('Creating directory: %s' % os.path.join(self.sim_data_dir, output_dir))
             os.makedirs(os.path.join(self.sim_data_dir, output_dir))
@@ -128,6 +139,7 @@ Max_restarts: %d
                                                                           restart_file,
                                                                           0,  # timestamp started
                                                                           0,  # timestamp last modified
+                                                                          t_stall,
                                                                           t_start,
                                                                           t_end,
                                                                           0,  # UNIX process ID (PID)
