@@ -156,9 +156,13 @@ class SimulationTask(object):
         start_script_template = '%s & echo $!>.process.pid'
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
-        # Test if the process is running
-        if self.config.has_option('Simulation', 'PID'):
-            pid = self.config.getint('Simulation', 'PID')
+
+        # Test if the process is running accoding to the .process.pid file
+        if os.path.isfile('.process.pid'):
+            # if the PID file exists, try to read the process ID
+            f_pid = open('.process.pid', 'r')
+            pid = int(f_pid.readline().strip())
+            f_pid.close()
             if pid > 0:
                 try:
                     os.kill(pid, 0)
@@ -205,10 +209,12 @@ class SimulationTask(object):
         print('restarting simulation: %s' % self.full_dir)
         if self.logger is not None:
             self.logger.info('Restarting simulation: %s' % self.full_dir)
-        # Test if the process is running
-        if self.config.has_option('Simulation', 'PID'):
-            # It is also possible that the self.proc object is None, because it is created by another process
-            pid = self.config.getint('Simulation', 'PID')
+        # Test if the process is running accoding to the .process.pid file
+        if os.path.isfile('.process.pid'):
+            # if the PID file exists, try to read the process ID
+            f_pid = open('.process.pid', 'r')
+            pid = int(f_pid.readline().strip())
+            f_pid.close()
             if pid > 0:
                 try:
                     os.kill(pid, 0)
@@ -325,31 +331,49 @@ class SimulationTask(object):
         os.chdir(self.full_dir)
         self.t = self.sim_get_model_time()
         self.t_min = self.sim_get_model_start_time()
+
+        # Check the last output time from either the output file or the error file
+        output_file = ''
         if self.config.has_option('Simulation', 'Output_file'):
             output_file = self.config.get('Simulation', 'Output_file')
             if os.path.isfile(output_file):
                 self.mtime = os.stat(output_file).st_mtime
+        elif self.config.has_option('Simulation', 'Error_file'):
+            error_file = self.config.get('Simulation', 'Error_file')
+            if os.path.isfile(error_file_file):
+                self.mtime = os.stat(error_file).st_mtime
+
+        # Get the starting time of the simulation
         if self.config.has_option('Simulation', 'Timestamp_started'):
             self.ctime = self.config.getfloat('Simulation', 'Timestamp_started')
+
+        # Determine whether the simulation is running using the process ID
         if os.path.isfile('.process.pid'):
             # if the PID file exists, try to read the process ID
             f_pid = open('.process.pid', 'r')
             pid = int(f_pid.readline().strip())
             f_pid.close()
-        # if self.config.has_option('Simulation', 'PID'):
-        #    pid = self.config.getint('Simulation', 'PID')
             if pid == 0:
                 if self.mtime == 0:
                     self.status = SimulationTask.STATUS_NEW
             else:
                 try:
-                    os.kill(pid, 0)
-                    # it is running. Check if stalled.
-                    stall_time = 300.0  # after 300s if the code doesn't advance, it is considered stalled
+                    os.kill(pid, 0)  # This just checks if the process is running. It doesn't kill the process
+                    # It is running. Check if stalled.
+                    # The default value is large to prevent a slow simulation to be mistakenly killed
+                    stall_time = 6.e6  # after 6.e6 seconds if the code doesn't advance, it is considered stalled
                     if self.config.has_option('Simulation', 'Stall_time'):
+                        # Allow overriding the stall time using the per-simulation config file
                         stall_time = self.config.getfloat('Simulation', 'Stall_time')
                     if time.time() - self.mtime > stall_time:
                         self.status = SimulationTask.STATUS_STALL
+                        if self.logger is not None:
+                            mtime_str = datetime.datetime.fromtimestamp(self.mtime).strftime('%m-%d %H:%M')
+                            msg = 'job %s is running [PID=%d], but no update in its output file (%s) since %s. ' \
+                                  'The stall time of this task is %s sec. ' \
+                                  'Marked as STALL' % (self.name, pid, output_file, mtime_str, stall_time)
+                            print(msg)
+                            self.logger.info(msg)
                     else:
                         self.status = SimulationTask.STATUS_RUN
                 except (OSError, ValueError), e:
@@ -375,8 +399,11 @@ class SimulationTask(object):
         the method to do nothing but return 1.
         """
         # Find the process by PID
-        if self.config.has_option('Simulation', 'PID'):
-            pid = self.config.getint('Simulation', 'PID')
+        if os.path.isfile('.process.pid'):
+            # if the PID file exists, try to read the process ID
+            f_pid = open('.process.pid', 'r')
+            pid = int(f_pid.readline().strip())
+            f_pid.close()
             try:
                 os.kill(pid, signal.SIGKILL)
                 msg = 'Simulation %s (PID: %d) killed.' % (self.name, pid)
@@ -387,7 +414,7 @@ class SimulationTask(object):
                 msg = '%s: Cannot kill the process: %s\n' % (str(err),  self.name)
                 print(msg)
                 if self.logger is not None:
-                    self.logger.warning(msg)
+                    self.logger.error(msg)
         return 0
 
     def sim_stop(self):
@@ -424,8 +451,10 @@ class SimulationTask(object):
             backup_restart_fn = 'restart.tmp.%d' % int(ts)
             if os.path.isfile(os.path.join(self.full_dir, restart_fn)):
                 shutil.copyfile(os.path.join(self.full_dir, restart_fn), os.path.join(self.full_dir, backup_restart_fn))
-                sys.stdout.write('Restart file has been backup as ' + backup_restart_fn + '\n')
-
+                msg = 'Restart file has been backup as ' + backup_restart_fn
+                print(msg)
+                if self.logger is not None:
+                    self.logger.info(msg)
                 # delete the oldest backup if there is a limit of maximum number of backup files
                 backup_file_list = sorted(glob.glob(os.path.join(self.full_dir, 'restart.tmp.*')))
                 if 0 < self.maximum_number_of_checkpoints < len(backup_file_list):
@@ -433,6 +462,8 @@ class SimulationTask(object):
                         os.remove(os.path.join(self.full_dir, backup_restart_del_fn))
         else:
             # Without knowing the name of the restartable snapshot, SiMon will not be able to backup
+            if self.logger is not None:
+                self.logger.info('SiMon does not know how to backup the current simulation %s' % self.name)
             return -1
         return 0
 

@@ -20,6 +20,9 @@ Max_restarts: 2
 
 # Log level of the daemon: INFO/WARNING/ERROR/CRITICAL [default: INFO]
 Log_level: INFO
+
+# The time (in seconds) since the last modification of the output file, beyond which a simulation is considered stalled
+Stall_time: 7200
 """
 
 

@@ -4,11 +4,11 @@ from setuptools import setup, find_packages
 # packages are code source
 
 setup(name='astrosimon',
-      version='0.5.2',
+      version='0.6.0',
       description='Simulation Monitor for computational astrophysics',
       url='https://github.com/maxwelltsai/SiMon',
       author='Maxwell Cai, Penny Qian',
-      author_email='pennyqxr@gmail.com',
+      author_email='maxwellemail@gmail.com',
       license='BSD 2-Clause',
       packages=find_packages(),
       zip_safe=False,
