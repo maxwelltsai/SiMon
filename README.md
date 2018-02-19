@@ -57,6 +57,7 @@ Edit the global config file `SiMon.conf` using your favorite text editor, change
     
 to be the dir of where your code located, then start simon again!
 
+More detailed configuration can refer https://pennyq.github.io/SiMon/
 
 That's it! Go and take a beer :)
 
