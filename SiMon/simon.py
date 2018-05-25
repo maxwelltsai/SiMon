@@ -35,7 +35,7 @@ class SiMon(object):
         
         if self.config is None:
             print('Error: Configuration file SiMon.conf does not exist on the current path: %s' % cwd)
-            if raw_input('Would you like to generate the default SiMon.conf file to the current directory? [Y/N] ').lower() == 'y':                
+            if input('Would you like to generate the default SiMon.conf file to the current directory? [Y/N] ').lower() == 'y':                
                 # shutil.copyfile(os.path.join(__simon_dir__, 'SiMon.conf'), os.path.join(cwd, 'SiMon.conf'))
                 Utilities.generate_conf()
                 print('SiMon.conf is now on the current directly. Please edit it accordingly and run ``simon [start|stop|interactive|i]``.')
@@ -50,7 +50,7 @@ class SiMon(object):
         if not os.path.isabs(cwd):
             cwd = os.path.join(os.getcwd(), cwd)  # now cwd is the simulation data root directory
         if not os.path.isdir(cwd):
-            if raw_input('Simulation root directory does not exist. '
+            if input('Simulation root directory does not exist. '
                          'Would you like to generate test simulations on the current directory? [Y/N] ').lower() == 'y':
                 import ic_generator_demo
                 ic_generator_demo.generate_ic(cwd)
@@ -194,7 +194,8 @@ class SiMon(object):
         self.sim_inst_parent_dict[self.cwd.strip()] = self.sim_tree  # map the current dir to be the sim tree root
         self.inst_id = 0
 
-        os.path.walk(self.cwd, self.traverse_simulation_dir_tree, '*')
+        for directory, dirnames, filenames in os.walk(self.cwd):
+            self.traverse_simulation_dir_tree('*', directory, dirnames)
 
         # Synchronize the status tree (status propagation)
         update_needed = True
@@ -252,7 +253,7 @@ class SiMon(object):
                              '\n\tStop Simulation (T), \n\tDelete Instance (D), \n\tKill Instance (K), '
                              '\n\tBackup Restart File (B), \n\tPost Processing (P), \n\tUNIX Shell (X), '
                              '\n\tQuit (Q): \n')
-            opt = raw_input('\nPlease choose an action to continue: ').lower()
+            opt = input('\nPlease choose an action to continue: ').lower()
 
         return opt
 
@@ -299,7 +300,7 @@ class SiMon(object):
                     print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
         if opt == 'x':  # execute an UNIX shell command in the simulation directory
             print('Executing an UNIX shell command in the selected simulations.')
-            shell_command = raw_input('CMD>> ')
+            shell_command = input('CMD>> ')
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_shell_exec(shell_command=shell_command)
@@ -428,7 +429,7 @@ class SiMon(object):
         terminal, and control the simulations accordingly.
         :return:
         """
-        print os.getcwd()
+        print(os.getcwd())
         os.chdir(self.cwd)
         self.build_simulation_tree()
         self.print_sim_status_overview(0)
