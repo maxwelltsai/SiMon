@@ -71,7 +71,7 @@ Max_restarts: %d
         self.stall_time = 6.e6  # Stall time
 
     def parse_config_file(self):
-        print self.global_conf_file
+        print(self.global_conf_file)
         conf_fn = self.global_conf_file
         conf = cp.ConfigParser()
         if os.path.isfile(conf_fn):

@@ -224,7 +224,7 @@ class SimulationTask(object):
                     # check how many times the simulation has been restarted
                     restarts = glob.glob('restart*/')
                     n_restarts = len(restarts)
-                    print n_restarts, self.config.getint('Simulation', 'Max_restarts')
+                    print(n_restarts, self.config.getint('Simulation', 'Max_restarts'))
                     # check whether it exceeds the maximum times of restarts specified in the per-sim config file
                     if self.config.has_option('Simulation', 'Max_restarts'):
                         if n_restarts > self.config.getint('Simulation', 'Max_restarts'):
@@ -290,7 +290,7 @@ class SimulationTask(object):
             output_file = self.config.get('Simulation', 'Output_file')
             regex = re.compile('\\d+')
             if os.path.isfile(output_file):
-                last_line = subprocess.check_output(['tail', '-1', output_file])
+                last_line = subprocess.check_output(['tail', '-1', output_file]).decode('utf-8')
                 res = regex.findall(last_line)
                 if len(res) > 0:
                     self.t = float(res[0])
@@ -376,7 +376,7 @@ class SimulationTask(object):
                             self.logger.info(msg)
                     else:
                         self.status = SimulationTask.STATUS_RUN
-                except (OSError, ValueError), e:
+                except (OSError, ValueError) as e:
                     # The process is not running, check if stopped or done
                     if self.t >= self.t_max or self.status == SimulationTask.STATUS_DONE:
                         self.status = SimulationTask.STATUS_DONE
@@ -410,7 +410,7 @@ class SimulationTask(object):
                 print(msg)
                 if self.logger is not None:
                     self.logger.info(msg)
-            except OSError, err:
+            except OSError as err:
                 msg = '%s: Cannot kill the process: %s\n' % (str(err),  self.name)
                 print(msg)
                 if self.logger is not None:
