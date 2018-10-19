@@ -73,7 +73,7 @@ class Utilities(object):
         confirmed = False
         vec_index_selected = []
         while confirmed is False:
-            response = get_input(prompt)
+            response = Utilities.get_input(prompt)
             fragment = response.split(',')
             for token_i in fragment:
                 if '-' in token_i:  # it is a range
@@ -94,7 +94,7 @@ class Utilities(object):
                     except ValueError:
                         print('Invalid input %s. Please use only integer numbers.' % token_i.strip())
                         continue
-            if get_input('Your input is \n\t'+str(vec_index_selected)+', confirm? [Y/N] ').lower() == 'y':
+            if Utilities.get_input('Your input is \n\t'+str(vec_index_selected)+', confirm? [Y/N] ').lower() == 'y':
                 confirmed = True
                 return map(int, vec_index_selected)
             else:
