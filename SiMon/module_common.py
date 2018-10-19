@@ -475,8 +475,8 @@ class SimulationTask(object):
         case, this method does nothing but just return 1.
         """
         if self.mode == 'interactive':
-            confirm = raw_input('Are you sure you would like to delete the instance '
-                                '#%d and its sub-instances? [Y/N] ' % self.id).lower()
+            confirm = Utilities.get_input('Are you sure you would like to delete the instance '
+                                          '#%d and its sub-instances? [Y/N] ' % self.id).lower()
             if confirm != 'y':
                 return 1
         else:
@@ -494,7 +494,7 @@ class SimulationTask(object):
         :return: Return 0 if succeed, -1 if failed.
         """
         if shell_command is None:
-            shell_command = raw_input('CMD>> ')
+            shell_command = Utilities.get_input('CMD>> ')
         sys.stdout.write('========== Command on #%d ==> %s (PWD=%s) ==========\n'
                          % (self.id, self.full_dir, self.full_dir))
         original_dir = os.getcwd()

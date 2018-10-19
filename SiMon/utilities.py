@@ -2,6 +2,8 @@
 Implementation of utilities used by SiMon globally.
 """
 
+import sys
+
 
 config_file_template = """# Global config file for SiMon
 [SiMon]
@@ -71,7 +73,7 @@ class Utilities(object):
         confirmed = False
         vec_index_selected = []
         while confirmed is False:
-            response = raw_input(prompt)
+            response = get_input(prompt)
             fragment = response.split(',')
             for token_i in fragment:
                 if '-' in token_i:  # it is a range
@@ -92,11 +94,21 @@ class Utilities(object):
                     except ValueError:
                         print('Invalid input %s. Please use only integer numbers.' % token_i.strip())
                         continue
-            if raw_input('Your input is \n\t'+str(vec_index_selected)+', confirm? [Y/N] ').lower() == 'y':
+            if get_input('Your input is \n\t'+str(vec_index_selected)+', confirm? [Y/N] ').lower() == 'y':
                 confirmed = True
                 return map(int, vec_index_selected)
             else:
                 vec_index_selected = []
+
+    @staticmethod
+    def get_input(prompt_msg):
+        """
+        This method makes use of the raw_input() method in Python2 and input() method in Python 3.
+        """
+        if sys.version_info[:2] <= (2, 7):
+            return raw_input(prompt_msg)
+        else:
+            return input(prompt_msg)
 
     @staticmethod
     def generate_conf():
