@@ -398,6 +398,8 @@ class SimulationTask(object):
         :return: Return 0 if succeed, -1 if failed. If the simulation is not running, then it cannot be killed, causing
         the method to do nothing but return 1.
         """
+        orig_dir = os.getcwd()
+        os.chdir(self.full_dir)
         # Find the process by PID
         if os.path.isfile('.process.pid'):
             # if the PID file exists, try to read the process ID
@@ -411,10 +413,11 @@ class SimulationTask(object):
                 if self.logger is not None:
                     self.logger.info(msg)
             except OSError as err:
-                msg = '%s: Cannot kill the process: %s\n' % (str(err),  self.name)
+                msg = '%s: Cannot kill the job `%s` with PID = %d\n' % (str(err),  self.name, pid)
                 print(msg)
                 if self.logger is not None:
                     self.logger.error(msg)
+        os.chdir(orig_dir)
         return 0
 
     def sim_stop(self):
@@ -428,12 +431,15 @@ class SimulationTask(object):
         """
         # Create an empty file called 'STOP'. The integrator that detects this file will (hopefully) stop the
         # integration.
+        orig_dir = os.getcwd()
+        os.chdir(self.full_dir)
         stop_file = open(os.path.join(self.full_dir, 'STOP'), 'w')
         stop_file.close()
         msg = 'A stop request has been sent to simulation %s' % self.name
         print(msg)
         if self.logger is not None:
             self.logger.info(msg)
+        os.chdir(orig_dir)
         return 0
 
     def sim_backup_checkpoint(self):
@@ -445,6 +451,8 @@ class SimulationTask(object):
         backup is not necessary, causing the method to do nothing but return 1.
         """
         # Try to get the restartable checkpoint file name from the config file
+        orig_dir = os.getcwd()
+        os.chdir(self.full_dir)
         if self.config.has_option('Simulation', 'Restart_file'):
             restart_fn = self.config.get('Simulation', 'Restart_file')
             ts = time.time()  # get the timestamp as part of the backup restart file name
@@ -465,6 +473,7 @@ class SimulationTask(object):
             if self.logger is not None:
                 self.logger.info('SiMon does not know how to backup the current simulation %s' % self.name)
             return -1
+        os.chdir(orig_dir)
         return 0
 
     def sim_delete(self):
