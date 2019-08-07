@@ -25,6 +25,8 @@ To install the latest stable version of **SiMon**, you can do
 Or you can install the latest developer version from the git repository using:
 
     pip install https://github.com/maxwelltsai/SiMon/archive/master.zip
+
+Note: as of mid-2019, large number of Python packages have migrated to Python 3.x, with no guarantee of Python 2.x backward compatability. Therefore, **SiMon** is currently optimize for Python 3.x.
     
 # Usage - Start with an example code
 

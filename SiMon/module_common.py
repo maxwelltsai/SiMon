@@ -8,7 +8,7 @@ import time
 import sys
 import re
 import shutil
-from utilities import Utilities
+from SiMon.utilities import Utilities
 
 try:
     import configparser as cp  # Python 3 only

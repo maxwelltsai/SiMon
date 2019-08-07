@@ -5,7 +5,7 @@ import time
 import logging
 import glob
 
-from utilities import Utilities
+from SiMon.utilities import Utilities
 import numpy as np
 try:
     import configparser as cp  # Python 3 only
@@ -13,7 +13,7 @@ except ImportError:
     import ConfigParser as cp  # Python 2 only
 from fnmatch import fnmatch
 from daemon import runner
-from module_common import SimulationTask
+from SiMon.module_common import SimulationTask
 
 __simon_dir__ = os.path.dirname(os.path.abspath(__file__))
 __user_shell_dir__ = os.getcwd()
@@ -52,7 +52,7 @@ class SiMon(object):
         if not os.path.isdir(cwd):
             if Utilities.get_input('Simulation root directory does not exist. '
                                    'Would you like to generate test simulations on the current directory? [Y/N] ').lower() == 'y':
-                import ic_generator_demo
+                import SiMon.ic_generator_demo as ic_generator_demo
                 ic_generator_demo.generate_ic(cwd)
                 print('Demo simulations generated. Please start them with ``simon start``')
             else:
