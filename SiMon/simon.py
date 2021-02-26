@@ -148,7 +148,7 @@ class SiMon(object):
                                 sim_inst = getattr(sim_inst_mod, code_name)(id, filename, fullpath,
                                                                             SimulationTask.STATUS_NEW,
                                                                             logger=self.logger)
-                        except cp.NoOptionError:
+                        except (cp.NoOptionError, cp.NoSectionError):
                             pass
                     else:
                         continue
