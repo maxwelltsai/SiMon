@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from ic_generator import InitialConditionGenerator
+from SiMon.ic_generator import InitialConditionGenerator
 
 
 def generate_ic(output_basedir=os.getcwd()):

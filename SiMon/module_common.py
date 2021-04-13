@@ -8,7 +8,7 @@ import time
 import sys
 import re
 import shutil
-from utilities import Utilities
+from SiMon.utilities import Utilities
 
 try:
     import configparser as cp  # Python 3 only
@@ -224,7 +224,7 @@ class SimulationTask(object):
                     # check how many times the simulation has been restarted
                     restarts = glob.glob('restart*/')
                     n_restarts = len(restarts)
-                    print n_restarts, self.config.getint('Simulation', 'Max_restarts')
+                    print(n_restarts, self.config.getint('Simulation', 'Max_restarts'))
                     # check whether it exceeds the maximum times of restarts specified in the per-sim config file
                     if self.config.has_option('Simulation', 'Max_restarts'):
                         if n_restarts > self.config.getint('Simulation', 'Max_restarts'):
@@ -290,7 +290,7 @@ class SimulationTask(object):
             output_file = self.config.get('Simulation', 'Output_file')
             regex = re.compile('\\d+')
             if os.path.isfile(output_file):
-                last_line = subprocess.check_output(['tail', '-1', output_file])
+                last_line = subprocess.check_output(['tail', '-1', output_file]).decode('utf-8')
                 res = regex.findall(last_line)
                 if len(res) > 0:
                     self.t = float(res[0])
@@ -376,7 +376,7 @@ class SimulationTask(object):
                             self.logger.info(msg)
                     else:
                         self.status = SimulationTask.STATUS_RUN
-                except (OSError, ValueError), e:
+                except (OSError, ValueError) as e:
                     # The process is not running, check if stopped or done
                     if self.t >= self.t_max or self.status == SimulationTask.STATUS_DONE:
                         self.status = SimulationTask.STATUS_DONE
@@ -398,6 +398,8 @@ class SimulationTask(object):
         :return: Return 0 if succeed, -1 if failed. If the simulation is not running, then it cannot be killed, causing
         the method to do nothing but return 1.
         """
+        orig_dir = os.getcwd()
+        os.chdir(self.full_dir)
         # Find the process by PID
         if os.path.isfile('.process.pid'):
             # if the PID file exists, try to read the process ID
@@ -410,11 +412,12 @@ class SimulationTask(object):
                 print(msg)
                 if self.logger is not None:
                     self.logger.info(msg)
-            except OSError, err:
-                msg = '%s: Cannot kill the process: %s\n' % (str(err),  self.name)
+            except OSError as err:
+                msg = '%s: Cannot kill the job `%s` with PID = %d\n' % (str(err),  self.name, pid)
                 print(msg)
                 if self.logger is not None:
                     self.logger.error(msg)
+        os.chdir(orig_dir)
         return 0
 
     def sim_stop(self):
@@ -428,12 +431,15 @@ class SimulationTask(object):
         """
         # Create an empty file called 'STOP'. The integrator that detects this file will (hopefully) stop the
         # integration.
+        orig_dir = os.getcwd()
+        os.chdir(self.full_dir)
         stop_file = open(os.path.join(self.full_dir, 'STOP'), 'w')
         stop_file.close()
         msg = 'A stop request has been sent to simulation %s' % self.name
         print(msg)
         if self.logger is not None:
             self.logger.info(msg)
+        os.chdir(orig_dir)
         return 0
 
     def sim_backup_checkpoint(self):
@@ -445,6 +451,8 @@ class SimulationTask(object):
         backup is not necessary, causing the method to do nothing but return 1.
         """
         # Try to get the restartable checkpoint file name from the config file
+        orig_dir = os.getcwd()
+        os.chdir(self.full_dir)
         if self.config.has_option('Simulation', 'Restart_file'):
             restart_fn = self.config.get('Simulation', 'Restart_file')
             ts = time.time()  # get the timestamp as part of the backup restart file name
@@ -465,6 +473,7 @@ class SimulationTask(object):
             if self.logger is not None:
                 self.logger.info('SiMon does not know how to backup the current simulation %s' % self.name)
             return -1
+        os.chdir(orig_dir)
         return 0
 
     def sim_delete(self):
@@ -475,8 +484,8 @@ class SimulationTask(object):
         case, this method does nothing but just return 1.
         """
         if self.mode == 'interactive':
-            confirm = raw_input('Are you sure you would like to delete the instance '
-                                '#%d and its sub-instances? [Y/N] ' % self.id).lower()
+            confirm = Utilities.get_input('Are you sure you would like to delete the instance '
+                                          '#%d and its sub-instances? [Y/N] ' % self.id).lower()
             if confirm != 'y':
                 return 1
         else:
@@ -494,7 +503,7 @@ class SimulationTask(object):
         :return: Return 0 if succeed, -1 if failed.
         """
         if shell_command is None:
-            shell_command = raw_input('CMD>> ')
+            shell_command = Utilities.get_input('CMD>> ')
         sys.stdout.write('========== Command on #%d ==> %s (PWD=%s) ==========\n'
                          % (self.id, self.full_dir, self.full_dir))
         original_dir = os.getcwd()
