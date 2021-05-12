@@ -7,6 +7,7 @@ import glob
 
 from SiMon.utilities import Utilities
 import numpy as np
+
 try:
     import configparser as cp  # Python 3 only
 except ImportError:
@@ -18,13 +19,22 @@ from SiMon.module_common import SimulationTask
 __simon_dir__ = os.path.dirname(os.path.abspath(__file__))
 __user_shell_dir__ = os.getcwd()
 
+
 class SiMon(object):
     """
     Main code of Simulation Monitor (SiMon).
     """
 
-    def __init__(self, pidfile=None, stdin='/dev/tty', stdout='/dev/tty', stderr='/dev/tty',
-                 mode='interactive', cwd=os.getcwd(), config_file='SiMon.conf'):
+    def __init__(
+        self,
+        pidfile=None,
+        stdin="/dev/tty",
+        stdout="/dev/tty",
+        stderr="/dev/tty",
+        mode="interactive",
+        cwd=os.getcwd(),
+        config_file="SiMon.conf",
+    ):
         """
         :param pidfile:
         """
@@ -34,39 +44,65 @@ class SiMon(object):
         self.config = self.parse_config_file(conf_path)
 
         if self.config is None:
-            print('Error: Configuration file SiMon.conf does not exist on the current path: %s' % cwd)
-            if Utilities.get_input('Would you like to generate the default SiMon.conf file to the current directory? [Y/N] ').lower() == 'y':
+            print(
+                "Error: Configuration file SiMon.conf does not exist on the current path: %s"
+                % cwd
+            )
+            if (
+                Utilities.get_input(
+                    "Would you like to generate the default SiMon.conf file to the current directory? [Y/N] "
+                ).lower()
+                == "y"
+            ):
                 # shutil.copyfile(os.path.join(__simon_dir__, 'SiMon.conf'), os.path.join(cwd, 'SiMon.conf'))
                 Utilities.generate_conf()
-                print('SiMon.conf is now on the current directly. Please edit it accordingly and run ``simon [start|stop|interactive|i]``.')
+                print(
+                    "SiMon.conf is now on the current directly. Please edit it accordingly and run ``simon [start|stop|interactive|i]``."
+                )
             sys.exit(-1)
         else:
             try:
-                cwd = self.config.get('SiMon', 'Root_dir')
+                cwd = self.config.get("SiMon", "Root_dir")
             except cp.NoOptionError:
-                print('Item Root_dir is missing in configuration file SiMon.conf. SiMon cannot start. Exiting...')
+                print(
+                    "Item Root_dir is missing in configuration file SiMon.conf. SiMon cannot start. Exiting..."
+                )
                 sys.exit(-1)
         # make sure that cwd is the absolute path
         if not os.path.isabs(cwd):
-            cwd = os.path.join(os.getcwd(), cwd)  # now cwd is the simulation data root directory
+            cwd = os.path.join(
+                os.getcwd(), cwd
+            )  # now cwd is the simulation data root directory
         if not os.path.isdir(cwd):
-            if Utilities.get_input('Simulation root directory does not exist. '
-                                   'Would you like to generate test simulations on the current directory? [Y/N] ').lower() == 'y':
+            if (
+                Utilities.get_input(
+                    "Simulation root directory does not exist. "
+                    "Would you like to generate test simulations on the current directory? [Y/N] "
+                ).lower()
+                == "y"
+            ):
                 import SiMon.ic_generator_demo as ic_generator_demo
+
                 ic_generator_demo.generate_ic(cwd)
-                print('Demo simulations generated. Please start them with ``simon start``')
+                print(
+                    "Demo simulations generated. Please start them with ``simon start``"
+                )
             else:
-                print('Exiting...')
+                print("Exiting...")
             sys.exit(-1)
 
         self.module_dict = self.register_modules()
 
         self.selected_inst = []  # A list of the IDs of selected simulation instances
-        self.sim_inst_dict = dict()  # the container of all SimulationTask objects (ID to object mapping)
-        self.sim_inst_parent_dict = dict()  # given the current path, find out the instance of the parent
+        self.sim_inst_dict = (
+            dict()
+        )  # the container of all SimulationTask objects (ID to object mapping)
+        self.sim_inst_parent_dict = (
+            dict()
+        )  # given the current path, find out the instance of the parent
 
         # TODO: create subclass instance according to the config file
-        self.sim_tree = SimulationTask(0, 'root', cwd, SimulationTask.STATUS_NEW)
+        self.sim_tree = SimulationTask(0, "root", cwd, SimulationTask.STATUS_NEW)
         self.stdin_path = stdin
         self.stdout_path = stdout
         self.stderr_path = stderr
@@ -78,8 +114,10 @@ class SiMon(object):
         self.logger = None
         self.max_concurrent_jobs = 2
 
-        if self.config.has_option('SiMon', 'Max_concurrent_jobs'):
-            self.max_concurrent_jobs = self.config.getint('SiMon', 'Max_concurrent_jobs')
+        if self.config.has_option("SiMon", "Max_concurrent_jobs"):
+            self.max_concurrent_jobs = self.config.getint(
+                "SiMon", "Max_concurrent_jobs"
+            )
 
         os.chdir(cwd)
 
@@ -111,18 +149,20 @@ class SiMon(object):
         :return: A dict-like mapping between the name of the code and the filename of the module.
         """
         mod_dict = dict()
-        module_candidates = glob.glob(os.path.join(__simon_dir__, 'module_*.py'))
-        module_cwd = glob.glob(os.path.join(__user_shell_dir__, 'module_*.py'))  # load the modules also from cwd
+        module_candidates = glob.glob(os.path.join(__simon_dir__, "module_*.py"))
+        module_cwd = glob.glob(
+            os.path.join(__user_shell_dir__, "module_*.py")
+        )  # load the modules also from cwd
         for m_cwd in module_cwd:
             module_candidates.append(m_cwd)
         for mod_name in module_candidates:
             sys.path.append(__simon_dir__)
             sys.path.append(os.getcwd())
             mod_name = os.path.basename(mod_name)
-            mod = __import__(mod_name.split('.')[0])
-            if hasattr(mod, '__simulation__'):
+            mod = __import__(mod_name.split(".")[0])
+            if hasattr(mod, "__simulation__"):
                 # it is a valid SiMon module
-                mod_dict[mod.__simulation__] = mod_name.split('.')[0]
+                mod_dict[mod.__simulation__] = mod_name.split(".")[0]
         return mod_dict
 
     def traverse_simulation_dir_tree(self, pattern, base_dir, files):
@@ -138,16 +178,22 @@ class SiMon(object):
                     id = self.inst_id
 
                     # Try to determine the simulation code type by reading the config file
-                    sim_config = self.parse_config_file(os.path.join(fullpath, 'SiMon.conf'))
+                    sim_config = self.parse_config_file(
+                        os.path.join(fullpath, "SiMon.conf")
+                    )
                     sim_inst = None
                     if sim_config is not None:
                         try:
-                            code_name = sim_config.get('Simulation', 'Code_name')
+                            code_name = sim_config.get("Simulation", "Code_name")
                             if code_name in self.module_dict:
                                 sim_inst_mod = __import__(self.module_dict[code_name])
-                                sim_inst = getattr(sim_inst_mod, code_name)(id, filename, fullpath,
-                                                                            SimulationTask.STATUS_NEW,
-                                                                            logger=self.logger)
+                                sim_inst = getattr(sim_inst_mod, code_name)(
+                                    id,
+                                    filename,
+                                    fullpath,
+                                    SimulationTask.STATUS_NEW,
+                                    logger=self.logger,
+                                )
                         except (cp.NoOptionError, cp.NoSectionError):
                             pass
                     else:
@@ -171,12 +217,15 @@ class SiMon(object):
 
                     self.sim_inst_dict[sim_inst.parent_id].status = sim_inst.status
 
-                    if (sim_inst.t > self.sim_inst_dict[sim_inst.parent_id].t and
-                            not os.path.isfile(os.path.join(sim_inst.fulldir, 'ERROR'))) \
-                            or sim_inst.status == SimulationTask.STATUS_RUN:
+                    if (
+                        sim_inst.t > self.sim_inst_dict[sim_inst.parent_id].t
+                        and not os.path.isfile(os.path.join(sim_inst.fulldir, "ERROR"))
+                    ) or sim_inst.status == SimulationTask.STATUS_RUN:
                         # nominate as restart candidate
                         self.sim_inst_dict[sim_inst.parent_id].cid = sim_inst.id
-                        self.sim_inst_dict[sim_inst.parent_id].t_max_extended = sim_inst.t_max_extended
+                        self.sim_inst_dict[
+                            sim_inst.parent_id
+                        ].t_max_extended = sim_inst.t_max_extended
 
     def build_simulation_tree(self):
         """
@@ -189,13 +238,17 @@ class SiMon(object):
         os.chdir(self.cwd)
         self.sim_inst_dict = dict()
 
-        self.sim_tree = SimulationTask(0, 'root', self.cwd, SimulationTask.STATUS_NEW)  # initially only the root node
+        self.sim_tree = SimulationTask(
+            0, "root", self.cwd, SimulationTask.STATUS_NEW
+        )  # initially only the root node
         self.sim_inst_dict[0] = self.sim_tree  # map ID=0 to the root node
-        self.sim_inst_parent_dict[self.cwd.strip()] = self.sim_tree  # map the current dir to be the sim tree root
+        self.sim_inst_parent_dict[
+            self.cwd.strip()
+        ] = self.sim_tree  # map the current dir to be the sim tree root
         self.inst_id = 0
 
         for directory, dirnames, filenames in os.walk(self.cwd):
-            self.traverse_simulation_dir_tree('*', directory, dirnames)
+            self.traverse_simulation_dir_tree("*", directory, dirnames)
 
         # Synchronize the status tree (status propagation)
         update_needed = True
@@ -207,8 +260,14 @@ class SiMon(object):
                 if i == 0:
                     continue
                 inst = self.sim_inst_dict[i]
-                if inst.status == SimulationTask.STATUS_RUN or inst.status == SimulationTask.STATUS_DONE:
-                    if inst.parent_id > 0 and self.sim_inst_dict[inst.parent_id].status != inst.status:
+                if (
+                    inst.status == SimulationTask.STATUS_RUN
+                    or inst.status == SimulationTask.STATUS_DONE
+                ):
+                    if (
+                        inst.parent_id > 0
+                        and self.sim_inst_dict[inst.parent_id].status != inst.status
+                    ):
                         # propagate the status of children (restarted simulation) to parents' status
                         self.sim_inst_dict[inst.parent_id].status = inst.status
                         inst_status_modified = True
@@ -226,17 +285,21 @@ class SiMon(object):
         :return: start and stop time
         :rtype: int
         """
-        print(self.sim_inst_dict[sim_id])  # print the root node will cause the whole tree to be printed
+        print(
+            self.sim_inst_dict[sim_id]
+        )  # print the root node will cause the whole tree to be printed
         return self.sim_inst_dict[sim_id].t_min, self.sim_inst_dict[sim_id].t_max
 
     @staticmethod
     def print_help():
-        print('Usage: python simon.py [start|stop|interactive|help]')
-        print('\tTo show an overview of job status and quit: python simon.py (no arguments)')
-        print('\tstart: start the daemon')
-        print('\tstop: stop the daemon')
-        print('\tinteractive/i/-i: run in interactive mode (no daemon)')
-        print('\thelp: print this help message')
+        print("Usage: python simon.py [start|stop|interactive|help]")
+        print(
+            "\tTo show an overview of job status and quit: python simon.py (no arguments)"
+        )
+        print("\tstart: start the daemon")
+        print("\tstop: stop the daemon")
+        print("\tinteractive/i/-i: run in interactive mode (no daemon)")
+        print("\thelp: print this help message")
 
     @staticmethod
     def print_task_selector():
@@ -245,15 +308,30 @@ class SiMon(object):
 
         :return: current selected task symbol.
         """
-        opt = ''
-        while opt.lower() not in ['l', 's', 'n', 'r', 'c', 'x', 't', 'd', 'k', 'b', 'p', 'q']:
-            sys.stdout.write('\n=======================================\n')
-            sys.stdout.write('\tList Instances (L), \n\tSelect Instance (S), '
-                             '\n\tNew Run (N), \n\tRestart (R), \n\tCheck status (C), '
-                             '\n\tStop Simulation (T), \n\tDelete Instance (D), \n\tKill Instance (K), '
-                             '\n\tBackup Restart File (B), \n\tPost Processing (P), \n\tUNIX Shell (X), '
-                             '\n\tQuit (Q): \n')
-            opt = Utilities.get_input('\nPlease choose an action to continue: ').lower()
+        opt = ""
+        while opt.lower() not in [
+            "l",
+            "s",
+            "n",
+            "r",
+            "c",
+            "x",
+            "t",
+            "d",
+            "k",
+            "b",
+            "p",
+            "q",
+        ]:
+            sys.stdout.write("\n=======================================\n")
+            sys.stdout.write(
+                "\tList Instances (L), \n\tSelect Instance (S), "
+                "\n\tNew Run (N), \n\tRestart (R), \n\tCheck status (C), "
+                "\n\tStop Simulation (T), \n\tDelete Instance (D), \n\tKill Instance (K), "
+                "\n\tBackup Restart File (B), \n\tPost Processing (P), \n\tUNIX Shell (X), "
+                "\n\tQuit (Q): \n"
+            )
+            opt = Utilities.get_input("\nPlease choose an action to continue: ").lower()
 
         return opt
 
@@ -264,84 +342,127 @@ class SiMon(object):
         :param opt: The option from user input.
         """
 
-        if opt == 'q':  # quit interactive mode
+        if opt == "q":  # quit interactive mode
             sys.exit(0)
-        if opt == 'l':  # list all simulations
+        if opt == "l":  # list all simulations
             self.build_simulation_tree()
             self.print_sim_status_overview(0)
-        if opt in ['s', 'n', 'r', 'c', 'x', 't', 'd', 'k', 'b', 'p']:
-            if self.mode == 'interactive':
-                if self.selected_inst is None or len(self.selected_inst) == 0 or opt == 's':
-                    self.selected_inst = Utilities.id_input('Please specify a list of IDs (seperated by comma): ')
-                    sys.stdout.write('Instances ' + str(self.selected_inst) + ' selected.\n')
+        if opt in ["s", "n", "r", "c", "x", "t", "d", "k", "b", "p"]:
+            if self.mode == "interactive":
+                if (
+                    self.selected_inst is None
+                    or len(self.selected_inst) == 0
+                    or opt == "s"
+                ):
+                    self.selected_inst = Utilities.id_input(
+                        "Please specify a list of IDs (seperated by comma): "
+                    )
+                    sys.stdout.write(
+                        "Instances " + str(self.selected_inst) + " selected.\n"
+                    )
 
         # TODO: use message? to rewrite this part in a smarter way
-        if opt == 'n':  # start new simulations
+        if opt == "n":  # start new simulations
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_start()
                     # reset the selection list
                     self.selected_inst = []
                 else:
-                    print('The selected simulation with ID = %d does not exist. Simulation not started.\n' % sid)
-        if opt == 'r':  # restart simulations
+                    print(
+                        "The selected simulation with ID = %d does not exist. Simulation not started.\n"
+                        % sid
+                    )
+        if opt == "r":  # restart simulations
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_restart()
                     # reset the selection list
                     self.selected_inst = []
                 else:
-                    print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
-        if opt == 'c':  # check the recent or current status of the simulation and print it
+                    print(
+                        "The selected simulation with ID = %d does not exist. Simulation not restarted.\n"
+                        % sid
+                    )
+        if (
+            opt == "c"
+        ):  # check the recent or current status of the simulation and print it
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_collect_recent_output_message()
                 else:
-                    print('The selected simulation with ID = %d does not exist. Simulation not restarted.\n' % sid)
-        if opt == 'x':  # execute an UNIX shell command in the simulation directory
-            print('Executing an UNIX shell command in the selected simulations.')
-            shell_command = Utilities.get_input('CMD>> ')
+                    print(
+                        "The selected simulation with ID = %d does not exist. Simulation not restarted.\n"
+                        % sid
+                    )
+        if opt == "x":  # execute an UNIX shell command in the simulation directory
+            print("Executing an UNIX shell command in the selected simulations.")
+            shell_command = Utilities.get_input("CMD>> ")
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_shell_exec(shell_command=shell_command)
                 else:
-                    print('The selected simulation with ID = %d does not exist. Cannot execute command.\n' % sid)
-        if opt == 't':  # soft-stop the simulation in the ways that supported by the code
+                    print(
+                        "The selected simulation with ID = %d does not exist. Cannot execute command.\n"
+                        % sid
+                    )
+        if (
+            opt == "t"
+        ):  # soft-stop the simulation in the ways that supported by the code
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_stop()
                 else:
-                    print('The selected simulation with ID = %d does not exist. Simulation not stopped.\n' % sid)
-        if opt == 'd':  # delete the simulation tree and all its data
+                    print(
+                        "The selected simulation with ID = %d does not exist. Simulation not stopped.\n"
+                        % sid
+                    )
+        if opt == "d":  # delete the simulation tree and all its data
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_delete()
                     # reset the selection list
                     self.selected_inst = []
                 else:
-                    print('The selected simulation with ID = %d does not exist. Cannot delete simulation.\n' % sid)
-        if opt == 'k':  # kill the UNIX process associate with a simulation task
+                    print(
+                        "The selected simulation with ID = %d does not exist. Cannot delete simulation.\n"
+                        % sid
+                    )
+        if opt == "k":  # kill the UNIX process associate with a simulation task
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_kill()
                     # reset the selection list
                     self.selected_inst = []
                 else:
-                    print('The selected simulation with ID = %d does not exist. Cannot kill simulation.\n' % sid)
-        if opt == 'b':  # backup the simulation checkpoint files (for restarting purpose in the future)
+                    print(
+                        "The selected simulation with ID = %d does not exist. Cannot kill simulation.\n"
+                        % sid
+                    )
+        if (
+            opt == "b"
+        ):  # backup the simulation checkpoint files (for restarting purpose in the future)
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_backup_checkpoint()
                 else:
-                    print('The selected simulation with ID = %d does not exist. Cannot backup checkpoint.\n' % sid)
-        if opt == 'p':  # perform (post)-processing (usually after the simulation is done)
+                    print(
+                        "The selected simulation with ID = %d does not exist. Cannot backup checkpoint.\n"
+                        % sid
+                    )
+        if (
+            opt == "p"
+        ):  # perform (post)-processing (usually after the simulation is done)
             for sid in self.selected_inst:
                 if sid in self.sim_inst_dict:
                     self.sim_inst_dict[sid].sim_finalize()
                     # reset the selection list
                     self.selected_inst = []
                 else:
-                    print('The selected simulation with ID = %d does not exist. Cannot perform postprocessing.\n' % sid)
+                    print(
+                        "The selected simulation with ID = %d does not exist. Cannot perform postprocessing.\n"
+                        % sid
+                    )
 
     def auto_scheduler(self):
         """
@@ -370,7 +491,10 @@ class SiMon(object):
 
         index_niceness_sorted = np.argsort(sim_niceness_vec)
         for ind in index_niceness_sorted:
-            if self.sim_inst_dict[ind].status != SimulationTask.STATUS_DONE and self.sim_inst_dict[ind].id > 0:
+            if (
+                self.sim_inst_dict[ind].status != SimulationTask.STATUS_DONE
+                and self.sim_inst_dict[ind].id > 0
+            ):
                 schedule_list.append(self.sim_inst_dict[ind])
                 print(self.sim_inst_dict[ind].name)
 
@@ -378,14 +502,14 @@ class SiMon(object):
             if sim.id == 0:  # the root group, skip
                 continue
             sim.sim_get_status()  # update its status
-            print('Checking instance #%d ==> %s [%s]' % (sim.id, sim.name, sim.status))
+            print("Checking instance #%d ==> %s [%s]" % (sim.id, sim.name, sim.status))
             if sim.status == SimulationTask.STATUS_RUN:
                 sim.sim_backup_checkpoint()
             elif sim.status == SimulationTask.STATUS_STALL:
                 sim.sim_kill()
                 self.build_simulation_tree()
             elif sim.status == SimulationTask.STATUS_STOP and sim.level == 1:
-                self.logger.warning('STOP detected: '+sim.fulldir)
+                self.logger.warning("STOP detected: " + sim.fulldir)
                 # check if there is available slot to restart the simulation
                 if concurrent_jobs < self.max_concurrent_jobs and sim.level == 1:
                     # search only top level instance to find the restart candidate
@@ -394,8 +518,12 @@ class SiMon(object):
                     # restart the simulation instance at the leaf node
                     while current_inst.cid != -1:
                         current_inst = self.sim_inst_dict[current_inst.cid]
-                    print('RESTART: #%d ==> %s' % (current_inst.id, current_inst.fulldir))
-                    self.logger.info('RESTART: #%d ==> %s' % (current_inst.id, current_inst.fulldir))
+                    print(
+                        "RESTART: #%d ==> %s" % (current_inst.id, current_inst.fulldir)
+                    )
+                    self.logger.info(
+                        "RESTART: #%d ==> %s" % (current_inst.id, current_inst.fulldir)
+                    )
                     current_inst.sim_restart()
                     concurrent_jobs += 1
             elif sim.status == SimulationTask.STATUS_NEW:
@@ -404,8 +532,10 @@ class SiMon(object):
                     # Start new run
                     sim.sim_start()
                     concurrent_jobs += 1
-        self.logger.info('SiMon routine checking completed. Machine load: %d/%d' % (concurrent_jobs,
-                                                                                    self.max_concurrent_jobs))
+        self.logger.info(
+            "SiMon routine checking completed. Machine load: %d/%d"
+            % (concurrent_jobs, self.max_concurrent_jobs)
+        )
 
     def run(self):
         """
@@ -418,8 +548,8 @@ class SiMon(object):
             self.auto_scheduler()
             sys.stdout.flush()
             sys.stderr.flush()
-            if self.config.has_option('SiMon', 'daemon_sleep_time'):
-                time.sleep(self.config.getfloat('SiMon', 'daemon_sleep_time'))
+            if self.config.has_option("SiMon", "daemon_sleep_time"):
+                time.sleep(self.config.getfloat("SiMon", "daemon_sleep_time"))
             else:
                 time.sleep(180)
 
@@ -433,9 +563,9 @@ class SiMon(object):
         os.chdir(self.cwd)
         self.build_simulation_tree()
         self.print_sim_status_overview(0)
-        choice = ''
+        choice = ""
         if autoquit is False:
-            while choice != 'q':
+            while choice != "q":
                 choice = SiMon.print_task_selector()
                 self.task_handler(choice)
 
@@ -448,31 +578,35 @@ class SiMon(object):
         if necessary.
         :return:
         """
-        app = SiMon(pidfile=os.path.join(simon_dir, 'SiMon_daemon.pid'),
-                    stdout=os.path.join(simon_dir, 'SiMon.out.txt'),
-                    stderr=os.path.join(simon_dir, 'SiMon.err.txt'),
-                    cwd=simon_dir,
-                    mode='daemon')
+        app = SiMon(
+            pidfile=os.path.join(simon_dir, "SiMon_daemon.pid"),
+            stdout=os.path.join(simon_dir, "SiMon.out.txt"),
+            stderr=os.path.join(simon_dir, "SiMon.err.txt"),
+            cwd=simon_dir,
+            mode="daemon",
+        )
         # log system
         app.logger = logging.getLogger("DaemonLog")
-        if app.config.has_option('SiMon', 'Log_level'):
-            log_level = app.config.get('SiMon', 'Log_level')
-            if log_level == 'INFO':
+        if app.config.has_option("SiMon", "Log_level"):
+            log_level = app.config.get("SiMon", "Log_level")
+            if log_level == "INFO":
                 app.logger.setLevel(logging.INFO)
-            elif log_level == 'WARNING':
+            elif log_level == "WARNING":
                 app.logger.setLevel(logging.WARNING)
-            elif log_level == 'ERROR':
+            elif log_level == "ERROR":
                 app.logger.setLevel(logging.ERROR)
-            elif log_level == 'CRITICAL':
+            elif log_level == "CRITICAL":
                 app.logger.setLevel(logging.CRITICAL)
             else:
                 app.logger.setLevel(logging.INFO)
-        formatter = logging.Formatter("%(asctime)s - [%(levelname)s] - %(name)s - %(message)s")
-        handler = logging.FileHandler(os.path.join(simon_dir, 'SiMon.log'))
+        formatter = logging.Formatter(
+            "%(asctime)s - [%(levelname)s] - %(name)s - %(message)s"
+        )
+        handler = logging.FileHandler(os.path.join(simon_dir, "SiMon.log"))
         handler.setFormatter(formatter)
         app.logger.addHandler(handler)
         # initialize the daemon runner
-        app.logger.info('Starting SiMon daemon at log level %s' % log_level)
+        app.logger.info("Starting SiMon daemon at log level %s" % log_level)
         daemon_runner = runner.DaemonRunner(app)
         # This ensures that the logger file handle does not get closed during daemonization
         daemon_runner.daemon_context.files_preserve = [handler.stream]
@@ -482,20 +616,27 @@ class SiMon(object):
 def main():
     # execute only if run as a script
     if len(sys.argv) == 1:
-        print('Running SiMon in the interactive mode...')
+        print("Running SiMon in the interactive mode...")
         s = SiMon()
         s.interactive_mode(autoquit=True)
     elif len(sys.argv) > 1:
-        if sys.argv[1] in ['start', 'stop', 'restart']:
-            if sys.argv[1] == 'start':
+        if sys.argv[1] in ["start", "stop", "restart"]:
+            if sys.argv[1] == "start":
                 # test if the daemon is already started
-                if os.path.isfile('SiMon_daemon.pid'):
+                if os.path.isfile("SiMon_daemon.pid"):
                     try:
-                        f_pid = open('SiMon_daemon.pid')
+                        f_pid = open("SiMon_daemon.pid")
                         simon_pid = int(f_pid.readline())
-                        os.kill(simon_pid, 0)  # test whether the process exists, does not kill the process
-                        print('Error: the SiMon daemon is already running with process ID: %d' % simon_pid)
-                        print('Please make sure that you stop the daemon before starting it. Exiting...')
+                        os.kill(
+                            simon_pid, 0
+                        )  # test whether the process exists, does not kill the process
+                        print(
+                            "Error: the SiMon daemon is already running with process ID: %d"
+                            % simon_pid
+                        )
+                        print(
+                            "Please make sure that you stop the daemon before starting it. Exiting..."
+                        )
                         sys.exit(-1)
                     except (ValueError, OSError):
                         pass
@@ -503,15 +644,18 @@ def main():
             try:
                 SiMon.daemon_mode(os.getcwd())
             except runner.DaemonRunnerStopFailureError:
-                print('Error: the SiMon daemon is not running. There is no need to stop it.')
+                print(
+                    "Error: the SiMon daemon is not running. There is no need to stop it."
+                )
                 sys.exit(-1)
-        elif sys.argv[1] in ['interactive', 'i', '-i']:
+        elif sys.argv[1] in ["interactive", "i", "-i"]:
             s = SiMon()
             s.interactive_mode()
         else:
             print(sys.argv[1])
             SiMon.print_help()
             sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
