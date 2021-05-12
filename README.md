@@ -1,3 +1,5 @@
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 # SiMon -- Simulation Monitor
 
 ![alt tag](https://cloud.githubusercontent.com/assets/11092373/25200544/faf80cb2-254e-11e7-915c-c4dea66e2424.png)
