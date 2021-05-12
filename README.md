@@ -1,4 +1,5 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Downloads](https://static.pepy.tech/personalized-badge/astrosimon?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads)](https://pepy.tech/project/astrosimon)
 
 # SiMon -- Simulation Monitor
 
