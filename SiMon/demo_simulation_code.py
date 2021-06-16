@@ -91,7 +91,7 @@ if os.path.isfile(restart_file):
 xx = np.arange(t_start, t_end + dt, dt)
 yy = a * np.sin(omega * xx) + 0.05 * a * np.random.rand(len(xx))
 
-out_f = open(out_file, "wb")
+out_f = open(out_file, "w")
 
 for ind in range(len(xx)):
     print(xx[ind])

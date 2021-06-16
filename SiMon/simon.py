@@ -4,6 +4,7 @@ import sys
 import time
 import logging
 import glob
+import daemon
 
 from SiMon.utilities import Utilities
 import numpy as np
@@ -351,7 +352,7 @@ class SiMon(object):
             if self.mode == "interactive":
                 if (
                     self.selected_inst is None
-                    or len(self.selected_inst) == 0
+                    or len(list(self.selected_inst)) == 0
                     or opt == "s"
                 ):
                     self.selected_inst = Utilities.id_input(
@@ -607,10 +608,12 @@ class SiMon(object):
         app.logger.addHandler(handler)
         # initialize the daemon runner
         app.logger.info("Starting SiMon daemon at log level %s" % log_level)
-        daemon_runner = runner.DaemonRunner(app)
-        # This ensures that the logger file handle does not get closed during daemonization
-        daemon_runner.daemon_context.files_preserve = [handler.stream]
-        daemon_runner.do_action()  # fixed time period of calling run()
+        # daemon_runner = runner.DaemonRunner(app)
+        # # This ensures that the logger file handle does not get closed during daemonization
+        # daemon_runner.daemon_context.files_preserve = [handler.stream]
+        # daemon_runner.do_action()  # fixed time period of calling run()
+        with daemon.DaemonContext():
+            app.run()
 
 
 def main():
