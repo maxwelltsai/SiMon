@@ -1,3 +1,9 @@
+"""
+Abstract simulation tasks.
+
+"""
+
+
 import datetime
 import abc
 import glob
@@ -8,15 +14,13 @@ import time
 import sys
 import re
 import shutil
-from SiMon.utilities import Utilities
+from abc import ABC 
+from SiMon import utilities
 
-try:
-    import configparser as cp  # Python 3 only
-except ImportError:
-    import ConfigParser as cp  # Python 2 only
+import configparser as cp  # Python 3 only
 
 
-class SimulationTask(object):
+class Simulation(ABC):
     """
     A simulation task is a single simulation which the user requests to finish.
     It is associated with 1) a set of initial conditions specified in the input file,
@@ -112,7 +116,7 @@ class SimulationTask(object):
     def __repr__(self, level=0):
         if level == 0:
             ret = "[%s] %s\n" % (
-                SimulationTask.STATUS_LABEL[self.status],
+                Simulation.STATUS_LABEL[self.status],
                 self.full_dir,
             )
         else:
@@ -129,17 +133,17 @@ class SimulationTask(object):
                 int(self.t_max),
             )
             suffix = mtime_str
-            progress_bar = Utilities.progress_bar(
+            progress_bar = utilities.progress_bar(
                 self.t, self.t_max, self.t_min, prefix=prefix, suffix=suffix
             )
 
             info = "%s    \t%s\t" % (
-                Utilities.highlighted_text(str(self.name), "cyan", bold=True),
+                utilities.highlighted_text(str(self.name), "cyan", bold=True),
                 progress_bar,
             )
 
             ret = "[%s]\t%s%d%s%s\n" % (
-                SimulationTask.STATUS_LABEL[self.status],
+                Simulation.STATUS_LABEL[self.status],
                 placeholder_space,
                 self.id,
                 placeholder_dash,
@@ -397,7 +401,7 @@ class SimulationTask(object):
                 self.mtime = os.stat(output_file).st_mtime
         elif self.config.has_option("Simulation", "Error_file"):
             error_file = self.config.get("Simulation", "Error_file")
-            if os.path.isfile(error_file_file):
+            if os.path.isfile(error_file):
                 self.mtime = os.stat(error_file).st_mtime
 
         # Get the starting time of the simulation
@@ -412,7 +416,7 @@ class SimulationTask(object):
             f_pid.close()
             if pid == 0:
                 if self.mtime == 0:
-                    self.status = SimulationTask.STATUS_NEW
+                    self.status = Simulation.STATUS_NEW
             else:
                 try:
                     os.kill(
@@ -425,7 +429,7 @@ class SimulationTask(object):
                         # Allow overriding the stall time using the per-simulation config file
                         stall_time = self.config.getfloat("Simulation", "Stall_time")
                     if time.time() - self.mtime > stall_time:
-                        self.status = SimulationTask.STATUS_STALL
+                        self.status = Simulation.STATUS_STALL
                         if self.logger is not None:
                             mtime_str = datetime.datetime.fromtimestamp(
                                 self.mtime
@@ -439,21 +443,21 @@ class SimulationTask(object):
                             print(msg)
                             self.logger.info(msg)
                     else:
-                        self.status = SimulationTask.STATUS_RUN
+                        self.status = Simulation.STATUS_RUN
                 except (OSError, ValueError) as e:
                     # The process is not running, check if stopped or done
                     if (
                         self.t >= self.t_max
-                        or self.status == SimulationTask.STATUS_DONE
+                        or self.status == Simulation.STATUS_DONE
                     ):
-                        self.status = SimulationTask.STATUS_DONE
+                        self.status = Simulation.STATUS_DONE
                     else:
                         if self.ctime == 0.0:
-                            self.status = SimulationTask.STATUS_NEW
+                            self.status = Simulation.STATUS_NEW
                         elif os.path.isfile("ERROR"):
-                            self.status = SimulationTask.STATUS_ERROR
+                            self.status = Simulation.STATUS_ERROR
                         else:
-                            self.status = SimulationTask.STATUS_STOP
+                            self.status = Simulation.STATUS_STOP
         os.chdir(orig_dir)
         return self.status
 
@@ -567,7 +571,7 @@ class SimulationTask(object):
         case, this method does nothing but just return 1.
         """
         if self.mode == "interactive":
-            confirm = Utilities.get_input(
+            confirm = utilities.get_input(
                 "Are you sure you would like to delete the instance "
                 "#%d and its sub-instances? [Y/N] " % self.id
             ).lower()
@@ -588,7 +592,7 @@ class SimulationTask(object):
         :return: Return 0 if succeed, -1 if failed.
         """
         if shell_command is None:
-            shell_command = Utilities.get_input("CMD>> ")
+            shell_command = utilities.get_input("CMD>> ")
         sys.stdout.write(
             "========== Command on #%d ==> %s (PWD=%s) ==========\n"
             % (self.id, self.full_dir, self.full_dir)

@@ -16,10 +16,10 @@ class TestSimon(unittest.TestCase):
         s.print_sim_status_overview(0)
 
         # test choices without id input
-        s.task_handler("l")
+        s.interactive_task_handler("l")
 
         with self.assertRaises(SystemExit):
-            s.task_handler("q")
+            s.interactive_task_handler("q")
 
         """
         with self.assertRaises(SystemExit) as cm:
