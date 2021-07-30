@@ -4,7 +4,7 @@ import sys
 import time
 import logging
 import glob
-import daemon
+from daemonize import Daemonize
 
 import numpy as np
 
@@ -12,7 +12,8 @@ import configparser as cp
 from daemon import runner
 from SiMon import utilities
 from SiMon.simulation_container import SimulationContainer
-from SiMon.visualization import progress_graph 
+from SiMon.visualization import progress_graph
+from SiMon.priority_scheduler import PriorityScheduler 
 
 
 
@@ -23,7 +24,8 @@ class SiMon(object):
 
     def __init__(
         self,
-        pidfile=None,
+        logger,
+        pidfile='SiMon.pid',
         stdin="/dev/tty",
         stdout="/dev/tty",
         stderr="/dev/tty",
@@ -34,7 +36,7 @@ class SiMon(object):
 
         # Only needed in interactive mode
         conf_path = os.path.join(cwd, config_file)
-        self.config = utilities.parse_config_file(conf_path)
+        self.config = utilities.parse_config_file(os.path.join(cwd, config_file), section='SiMon')
 
         if self.config is None:
             print(
@@ -55,17 +57,19 @@ class SiMon(object):
             sys.exit(-1)
         else:
             try:
-                cwd = self.config.get("SiMon", "Root_dir")
+                cwd = self.config.get("Root_dir")
             except cp.NoOptionError:
                 print(
                     "Item Root_dir is missing in configuration file SiMon.conf. SiMon cannot start. Exiting..."
                 )
                 sys.exit(-1)
+
         # make sure that cwd is the absolute path
         if not os.path.isabs(cwd):
             cwd = os.path.join(
                 os.getcwd(), cwd
             )  # now cwd is the simulation data root directory
+
         if not os.path.isdir(cwd):
             if (
                 utilities.get_input(
@@ -92,19 +96,15 @@ class SiMon(object):
         self.pidfile_timeout = 5
         self.mode = mode
         self.cwd = cwd
-        self.inst_id = 0
-        self.logger = None
+        self.logger = logger
         self.max_concurrent_jobs = 2
 
         # container for all simulations
-        self.simulations = SimulationContainer(self.cwd)
-
-        if self.config.has_option("SiMon", "Max_concurrent_jobs"):
-            self.max_concurrent_jobs = self.config.getint(
-                "SiMon", "Max_concurrent_jobs"
-            )
+        self.simulations = SimulationContainer(root_dir=self.cwd)
+        self.scheduler = PriorityScheduler(self.simulations, self.logger, self.config)
 
         os.chdir(cwd)
+
 
 
 
@@ -253,15 +253,16 @@ class SiMon(object):
         """
         The entry point of this script if it is run with the daemon.
         """
+        print('Test')
         os.chdir(self.cwd)
-        self.build_simulation_tree()
+        self.simulations.build_simulation_tree()
         while True:
             # print('[%s] Auto scheduled' % datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-            self.auto_scheduler()
+            self.scheduler.schedule()
             sys.stdout.flush()
             sys.stderr.flush()
-            if self.config.has_option("SiMon", "daemon_sleep_time"):
-                time.sleep(self.config.getfloat("SiMon", "daemon_sleep_time"))
+            if "daemon_sleep_time" in self.config:
+                time.sleep(self.config.getfloat("daemon_sleep_time"))
             else:
                 time.sleep(180)
 
@@ -271,7 +272,6 @@ class SiMon(object):
         terminal, and control the simulations accordingly.
         :return:
         """
-        print(os.getcwd())
         os.chdir(self.cwd)
         print(self.simulations)
         choice = ""
@@ -281,7 +281,7 @@ class SiMon(object):
                 self.interactive_task_handler(choice)
 
     @staticmethod
-    def daemon_mode(simon_dir):
+    def daemon_mode(working_dir):
         """
         Run SiMon in the daemon mode.
 
@@ -289,27 +289,26 @@ class SiMon(object):
         if necessary.
         :return:
         """
-        app = SiMon(
-            pidfile=os.path.join(simon_dir, "SiMon_daemon.pid"),
-            stdout=os.path.join(simon_dir, "SiMon.out.txt"),
-            stderr=os.path.join(simon_dir, "SiMon.err.txt"),
-            cwd=simon_dir,
+        simon = SiMon(
+            logger=utilities.get_logger(),
+            pidfile=os.path.join(working_dir, "SiMon_daemon.pid"),
+            stdout=os.path.join(working_dir, "SiMon.out.txt"),
+            stderr=os.path.join(working_dir, "SiMon.err.txt"),
+            cwd=working_dir,
             mode="daemon",
         )
-
-        # setup the logger
-        app.logger = utilities.get_logger()
+        print('Starting daemon mode...')
 
         # initialize the daemon runner
-        with daemon.DaemonContext():
-            app.run()
+        daemon = Daemonize(app='SiMon', pid=simon.pidfile_path, action=simon.run, logger=utilities.get_logger())
+        daemon.start()
 
 
 def main():
     # execute only if run as a script
     if len(sys.argv) == 1:
         print("Running SiMon in the interactive mode...")
-        s = SiMon()
+        s = SiMon(logger=utilities.get_logger())
         s.interactive_mode(autoquit=True)
     elif len(sys.argv) > 1:
         if sys.argv[1] in ["start", "stop", "restart"]:

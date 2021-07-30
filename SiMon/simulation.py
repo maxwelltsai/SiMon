@@ -115,9 +115,10 @@ class Simulation(ABC):
 
     def __repr__(self, level=0):
         if level == 0:
-            ret = "[%s] %s\n" % (
-                Simulation.STATUS_LABEL[self.status],
-                self.full_dir,
+            ret = "%s %s\n" % (
+                # Simulation.STATUS_LABEL[self.status],
+                utilities.highlighted_text('Root:', 'yellow', bold=True),
+                utilities.highlighted_text(self.full_dir, 'yellow', bold=True),
             )
         else:
             # placeholder_dash = "|" + '-' * (level * 4)

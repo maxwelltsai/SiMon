@@ -7,6 +7,7 @@ import os
 import glob 
 import logging 
 import configparser as cp 
+from SiMon.config import DEFAULT_CONFIG as config 
 
 config_file_template = """# Global config file for SiMon
 [SiMon]
@@ -30,7 +31,7 @@ Log_level: INFO
 Stall_time: 7200
 """
 
-__logger__ = None 
+__logger = None 
 
 def get_simon_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -61,13 +62,16 @@ def progress_bar(val, val_max, val_min=0, prefix="", suffix="", bar_len=20):
         return "%s [%s] %s\r" % (prefix, bar, suffix)
 
 def highlighted_text(text, color=None, bold=False):
-    colors = ["red", "blue", "cyan", "green", "reset"]
-    color_codes = ["\033[31m", "\033[34m", "\033[36m", "\033[32m", "\033[0m"]
+    colors = ["red", "blue", "cyan", "green", "yellow", "purple", "white", "reset"]
+    color_codes = ["\033[31m", "\033[34m", "\033[36m", "\033[32m", "\033[0;33m", "\033[0;35m", "\033[0;37m", "\033[0m"]
     color_codes_bold = [
         "\033[1;31m",
         "\033[1;34m",
         "\033[1;36m",
         "\033[0;32m",
+        "\033[1;33m",
+        "\033[1;35m",
+        "\033[1;37m",
         "\033[0;0m",
     ]
 
@@ -144,7 +148,7 @@ def generate_conf():
     except IOError:
         print("Unexpected error:", sys.exc_info()[0])
 
-def parse_config_file(config_file):
+def parse_config_file(config_file, section=None):
     """
     Parse the configure file (SiMon.conf) for starting SiMon. The basic information of Simulation root directory
     must exist in the configure file before SiMon can start. A minimum configure file of SiMon looks like:
@@ -160,9 +164,15 @@ def parse_config_file(config_file):
     conf = cp.ConfigParser()
     if os.path.isfile(config_file):
         conf.read(config_file)
-        return conf
+        if section is not None:
+            if section in conf:
+                return conf[section]
+            else:
+                raise ValueError('Section %s does not exist in config file %s.' % (section, config_file))
+        else:
+            return conf
     else:
-        return None
+        raise ValueError('Config file %s does not exist.' % (config_file))
 
 def print_help():
     print("Usage: python simon.py [start|stop|interactive|help]")
@@ -229,9 +239,9 @@ def register_simon_modules(module_dir, user_shell_dir, module_pattern='module_*.
             mod_dict[mod.__simulation__] = mod_name.split(".")[0]
     return mod_dict
 
-def get_logger(log_level='INFO'):    
-    if __logger__ is not None:
-        return __logger__
+def get_logger(log_level='INFO', log_dir=None, log_file='SiMon.log'):    
+    if config['logger'] is not None:
+        return config['logger']
     else:
         logger = logging.getLogger("DaemonLog")
         if log_level == "INFO":
@@ -247,8 +257,12 @@ def get_logger(log_level='INFO'):
         formatter = logging.Formatter(
             "%(asctime)s - [%(levelname)s] - %(name)s - %(message)s"
         )
-        handler = logging.FileHandler(os.path.join(get_simon_dir(), "SiMon.log"))
+
+        if log_dir is None:
+            log_dir = os.getcwd()
+        handler = logging.FileHandler(os.path.join(log_dir, log_file))
         handler.setFormatter(formatter)
         logger.addHandler(handler)
-        # initialize the daemon runner
-        logger.info("Starting SiMon daemon at log level %s" % log_level)
+
+        config['logger'] = logger 
+        return logger 

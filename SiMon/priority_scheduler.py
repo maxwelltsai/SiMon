@@ -1,23 +1,23 @@
+from logging import Logger
 from SiMon.scheduler import Scheduler
 from SiMon.simulation import Simulation
 from SiMon.simulation_container import SimulationContainer
+from SiMon import config 
 import os 
 import numpy as np 
 
 
 class PriorityScheduler(Scheduler):
 
-    def __init__(self, container: SimulationContainer = None) -> None:
-        super().__init__(container)
-
+    def __init__(self, container: SimulationContainer = None, logger: Logger = None, config: dict = None) -> None:
+        super().__init__(container, logger, config)
     
     def schedule(self):
         """
         Schedule the simulations based on their priorities.
         """
 
-        os.chdir(self.cwd)
-        self.build_simulation_tree()
+        self.container.build_simulation_tree()
         schedule_list = []
         # Sort jobs according to priority (niceness)
         sim_niceness_vec = []
@@ -25,7 +25,7 @@ class PriorityScheduler(Scheduler):
         # check how many simulations are running
         concurrent_jobs = 0
         for i in self.container.sim_inst_dict.keys():
-            inst = self.sim_inst_dict[i]
+            inst = self.container.sim_inst_dict[i]
             sim_niceness_vec.append(inst.niceness)
             inst.sim_get_status()  # update its status
             # test if the process is running
@@ -36,7 +36,7 @@ class PriorityScheduler(Scheduler):
         for ind in index_niceness_sorted:
             if (
                 self.container.sim_inst_dict[ind].status != Simulation.STATUS_DONE
-                and self.container.im_inst_dict[ind].id > 0
+                and self.container.sim_inst_dict[ind].id > 0
             ):
                 schedule_list.append(self.container.sim_inst_dict[ind])
                 print(self.container.sim_inst_dict[ind].name)
@@ -45,7 +45,7 @@ class PriorityScheduler(Scheduler):
             if sim.id == 0:  # the root group, skip
                 continue
             sim.sim_get_status()  # update its status
-            print("Checking instance #%d ==> %s [%s]" % (sim.id, sim.name, sim.status))
+            self.logger.debug("Checking instance #%d ==> %s [%s]" % (sim.id, sim.name, sim.status))
             if sim.status == Simulation.STATUS_RUN:
                 sim.sim_backup_checkpoint()
             elif sim.status == Simulation.STATUS_STALL:
@@ -54,7 +54,7 @@ class PriorityScheduler(Scheduler):
             elif sim.status == Simulation.STATUS_STOP and sim.level == 1:
                 self.logger.warning("STOP detected: " + sim.fulldir)
                 # check if there is available slot to restart the simulation
-                if concurrent_jobs < self.max_concurrent_jobs and sim.level == 1:
+                if concurrent_jobs < int(self.config['max_concurrent_jobs']) and sim.level == 1:
                     # search only top level instance to find the restart candidate
                     # build restart path
                     current_inst = sim
@@ -71,11 +71,11 @@ class PriorityScheduler(Scheduler):
                     concurrent_jobs += 1
             elif sim.status == Simulation.STATUS_NEW:
                 # check if there is available slot to start the simulation
-                if concurrent_jobs < self.max_concurrent_jobs:
+                if concurrent_jobs < int(self.config['max_concurrent_jobs']):
                     # Start new run
                     sim.sim_start()
                     concurrent_jobs += 1
         self.logger.info(
             "SiMon routine checking completed. Machine load: %d/%d"
-            % (concurrent_jobs, self.max_concurrent_jobs)
+            % (concurrent_jobs, int(self.config['max_concurrent_jobs']))
         )

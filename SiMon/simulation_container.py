@@ -139,7 +139,7 @@ class SimulationContainer(object):
             else:
                 update_needed = False
         return 0
-        # print self.sim_tree
+        print(self.sim_tree)
 
     def __repr__(self, level=0):
         """
