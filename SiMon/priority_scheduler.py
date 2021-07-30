@@ -60,7 +60,7 @@ class PriorityScheduler(Scheduler):
                     current_inst = sim
                     # restart the simulation instance at the leaf node
                     while current_inst.cid != -1:
-                        current_inst = self.sim_inst_dict[current_inst.cid]
+                        current_inst = self.container.sim_inst_dict[current_inst.cid]
                     print(
                         "RESTART: #%d ==> %s" % (current_inst.id, current_inst.fulldir)
                     )

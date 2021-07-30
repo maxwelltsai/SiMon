@@ -4,12 +4,13 @@ import sys
 import time
 import logging
 import glob
-from daemonize import Daemonize
+# from daemonize import Daemonize
 
 import numpy as np
 
 import configparser as cp 
-from daemon import runner
+import daemon 
+from daemon import pidfile
 from SiMon import utilities
 from SiMon.simulation_container import SimulationContainer
 from SiMon.visualization import progress_graph
@@ -253,7 +254,6 @@ class SiMon(object):
         """
         The entry point of this script if it is run with the daemon.
         """
-        print('Test')
         os.chdir(self.cwd)
         self.simulations.build_simulation_tree()
         while True:
@@ -289,7 +289,7 @@ class SiMon(object):
         if necessary.
         :return:
         """
-        simon = SiMon(
+        app = SiMon(
             logger=utilities.get_logger(),
             pidfile=os.path.join(working_dir, "SiMon_daemon.pid"),
             stdout=os.path.join(working_dir, "SiMon.out.txt"),
@@ -300,8 +300,12 @@ class SiMon(object):
         print('Starting daemon mode...')
 
         # initialize the daemon runner
-        daemon = Daemonize(app='SiMon', pid=simon.pidfile_path, action=simon.run, logger=utilities.get_logger())
-        daemon.start()
+        # daemon = Daemonize(app='SiMon', pid=app.pidfile_path, action=app.run, logger=utilities.get_logger())
+        # daemon.start()
+
+        # with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr):
+        with daemon.DaemonContext(pidfile=pidfile.TimeoutPIDLockFile(os.path.join(working_dir, "SiMon_daemon.pid"))):
+            app.run()
 
 
 def main():
@@ -332,13 +336,7 @@ def main():
                     except (ValueError, OSError):
                         pass
             # The python-daemon library will handle the start/stop/restart arguments by itself
-            try:
-                SiMon.daemon_mode(os.getcwd())
-            except runner.DaemonRunnerStopFailureError:
-                print(
-                    "Error: the SiMon daemon is not running. There is no need to stop it."
-                )
-                sys.exit(-1)
+            SiMon.daemon_mode(os.getcwd())
         elif sys.argv[1] in ["interactive", "i", "-i"]:
             s = SiMon()
             s.interactive_mode()

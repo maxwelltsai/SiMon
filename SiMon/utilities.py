@@ -258,9 +258,13 @@ def get_logger(log_level='INFO', log_dir=None, log_file='SiMon.log'):
             "%(asctime)s - [%(levelname)s] - %(name)s - %(message)s"
         )
 
-        if log_dir is None:
-            log_dir = os.getcwd()
-        handler = logging.FileHandler(os.path.join(log_dir, log_file))
+        
+        if log_file is None:
+            handler = logging.StreamHandler()
+        else:
+            if log_dir is None:
+                log_dir = os.getcwd()
+            handler = logging.FileHandler(os.path.join(log_dir, log_file))
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
