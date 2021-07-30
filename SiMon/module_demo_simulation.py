@@ -1,4 +1,4 @@
-from module_common import SimulationTask
+from SiMon.simulation import Simulation
 import re
 import os
 import subprocess
@@ -8,7 +8,7 @@ import glob
 __simulation__ = "DemoSimulation"
 
 
-class DemoSimulation(SimulationTask):
+class DemoSimulation(Simulation):
     def __init__(
         self,
         sim_id,
