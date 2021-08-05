@@ -84,7 +84,7 @@ class Simulation(ABC):
         self.logger = logger
         self.error_type = ""
         self.config_file = "SiMon.conf"  # the file name of the config file to be placed in each simulation directory
-        self.config = None
+
         self.t = 0  # the current model time
         self.t_min = t_min  # minimum time for the simulation to start
         self.t_max = t_max  # maximum time marking the completion of the simulation
@@ -113,6 +113,16 @@ class Simulation(ABC):
         self.parse_config_file()
         self.sim_get_status()
 
+    def parse_config_file(self):
+        full_config_file_path = os.path.join(self.full_dir, self.config_file)
+        if os.path.isfile(full_config_file_path):
+            self.config = utilities.parse_config_file(os.path.join(self.full_dir, self.config_file), section='Simulation')
+            self.t_max = self.config['T_end']
+            self.t_min = self.config['T_start']
+            self.niceness = self.config['Niceness']
+        else:
+            self.config = {}
+
     def __repr__(self, level=0):
         if level == 0:
             ret = "%s %s\n" % (
@@ -136,7 +146,7 @@ class Simulation(ABC):
             suffix = mtime_str
             progress_bar = utilities.progress_bar(
                 self.t, self.t_max, self.t_min, prefix=prefix, suffix=suffix
-            )
+                )
 
             info = "%s    \t%s\t" % (
                 utilities.highlighted_text(str(self.name), "cyan", bold=True),
@@ -155,41 +165,41 @@ class Simulation(ABC):
             ret += child.__repr__(level + 1)
         return ret
 
-    def parse_config_file(self):
-        """
-        Parse the configure file (SiMon.conf) for the simulation. If the file does not exist, a new file with default
-        values will be created.
+    # def parse_config_file(self):
+    #     """
+    #     Parse the configure file (SiMon.conf) for the simulation. If the file does not exist, a new file with default
+    #     values will be created.
 
-        :return: return 0 if succeed, -1 if failed (file not exist, and cannot be created). If the file does not exist
-        but a new file with default values is created, the method returns 1.
-        """
-        conf_fn = os.path.join(self.full_dir, self.config_file)
-        conf = cp.ConfigParser()
-        if os.path.isfile(conf_fn):
-            conf.read(conf_fn)
-            self.config = conf
-            # synchronize config options to attributes
-            if self.config.has_option("Simulation", "T_end"):
-                self.t_max = self.config.getfloat("Simulation", "T_end")
-            if self.config.has_option("Simulation", "T_start"):
-                self.t_min = self.config.getfloat("Simulation", "T_start")
-            if self.config.has_option("Simulation", "Niceness"):
-                self.niceness = self.config.getint("Simulation", "Niceness")
-            if self.config.has_option("Simulation", "Maximum_n_checkpoints"):
-                self.maximum_number_of_checkpoints = self.config.getint(
-                    "Simulation", "Maximum_n_checkpoints"
-                )
+    #     :return: return 0 if succeed, -1 if failed (file not exist, and cannot be created). If the file does not exist
+    #     but a new file with default values is created, the method returns 1.
+    #     """
+    #     conf_fn = os.path.join(self.full_dir, self.config_file)
+    #     conf = cp.ConfigParser()
+    #     if os.path.isfile(conf_fn):
+    #         conf.read(conf_fn)
+    #         self.config = conf
+    #         # synchronize config options to attributes
+    #         if self.config.has_option("Simulation", "T_end"):
+    #             self.t_max = self.config.getfloat("Simulation", "T_end")
+    #         if self.config.has_option("Simulation", "T_start"):
+    #             self.t_min = self.config.getfloat("Simulation", "T_start")
+    #         if self.config.has_option("Simulation", "Niceness"):
+    #             self.niceness = self.config.getint("Simulation", "Niceness")
+    #         if self.config.has_option("Simulation", "Maximum_n_checkpoints"):
+    #             self.maximum_number_of_checkpoints = self.config.getint(
+    #                 "Simulation", "Maximum_n_checkpoints"
+    #             )
 
-        else:
-            if self.id > 0:
-                msg = (
-                    "WARNING: Simulation configuration file not exists! "
-                    "Creating default configuration as SiMon.conf.\n"
-                )
-                if self.logger is not None:
-                    self.logger.warning(msg)
-            # TODO: write default config file
-        return 0
+    #     else:
+    #         if self.id > 0:
+    #             msg = (
+    #                 "WARNING: Simulation configuration file not exists! "
+    #                 "Creating default configuration as SiMon.conf.\n"
+    #             )
+    #             if self.logger is not None:
+    #                 self.logger.warning(msg)
+    #         # TODO: write default config file
+    #     return 0
 
     def sim_start(self):
         """
@@ -215,8 +225,8 @@ class Simulation(ABC):
                 except (ValueError, OSError):
                     pass  # process not started yet
         # If the process is not started yet, then start it in a normal way
-        if self.config.has_option("Simulation", "Start_command"):
-            start_cmd = self.config.get("Simulation", "Start_command")
+        if "Start_command" in self.config:
+            start_cmd = self.config["Start_command"]
             # self.proc = subprocess.Popen(start_cmd, shell=True)
             os.system(start_script_template % start_cmd)
             # sleep for a little while to make sure that the pid file exist
@@ -224,9 +234,9 @@ class Simulation(ABC):
             fpid = open(".process.pid", "r")
             pid = int(fpid.readline())
             fpid.close()
-            self.config.set("Simulation", "PID", str(pid))
-            self.config.set("Simulation", "Timestamp_started", str(time.time()))
-            self.config.write(open(self.config_file, "w"))
+            self.config["PID"] = pid
+            self.config["Timestamp_started"] = time.time()
+            utilities.update_config_file(self.config_file, self.config, section='Simulation')
             if self.logger is not None:
                 msg = "Simulation %s started, PID = %d" % (self.name, pid)
                 self.logger.info(msg)
@@ -271,12 +281,9 @@ class Simulation(ABC):
                     # check how many times the simulation has been restarted
                     restarts = glob.glob("restart*/")
                     n_restarts = len(restarts)
-                    print(n_restarts, self.config.getint("Simulation", "Max_restarts"))
                     # check whether it exceeds the maximum times of restarts specified in the per-sim config file
-                    if self.config.has_option("Simulation", "Max_restarts"):
-                        if n_restarts > self.config.getint(
-                            "Simulation", "Max_restarts"
-                        ):
+                    if self.config["Max_restarts"]:
+                        if n_restarts > self.config["Max_restarts"]:
                             # if exceed, create an empty file called 'ERROR'
                             f_error = open("ERROR", "w")
                             f_error.close()
@@ -292,9 +299,9 @@ class Simulation(ABC):
                         # if the config entry Max_restarts does not exist in the config file, there is no restart limit
                         pass
                     # now try to restart the simulation
-                    if self.config.has_option("Simulation", "Restart_command"):
-                        restart_cmd = self.config.get("Simulation", "Restart_command")
-                        if restart_cmd is not "" and restart_cmd.strip() is not "None":
+                    if "Restart_command" in self.config:
+                        restart_cmd = self.config["Restart_command"]
+                        if restart_cmd != "" and restart_cmd.strip() != "None":
                             msg = "Restarting simulation: %s" % self.full_dir
                             print(msg)
                             if self.logger is not None:
@@ -309,11 +316,9 @@ class Simulation(ABC):
                             fpid = open(".process.pid", "r")
                             pid = int(fpid.readline())
                             fpid.close()
-                            self.config.set("Simulation", "PID", str(pid))
-                            self.config.set(
-                                "Simulation", "Timestamp_started", str(time.time())
-                            )
-                            self.config.write(open(self.config_file, "w"))
+                            self.config["PID"] = pid
+                            self.config["Timestamp_started"] = time.time()
+                            utilities.update_config_file(self.config_file, self.config, section='Simulation')
                         else:
                             msg = (
                                 "%s: unable to restart because the restart command is not properly configured."
@@ -346,8 +351,8 @@ class Simulation(ABC):
         """
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
-        if self.config.has_option("Simulation", "Output_file"):
-            output_file = self.config.get("Simulation", "Output_file")
+        if "Output_file" in self.config:
+            output_file = self.config["Output_file"]
             regex = re.compile("\\d+")
             if os.path.isfile(output_file):
                 last_line = subprocess.check_output(["tail", "-1", output_file]).decode(
@@ -396,18 +401,18 @@ class Simulation(ABC):
 
         # Check the last output time from either the output file or the error file
         output_file = ""
-        if self.config.has_option("Simulation", "Output_file"):
-            output_file = self.config.get("Simulation", "Output_file")
+        if "Output_file" in self.config:
+            output_file = self.config["Output_file"]
             if os.path.isfile(output_file):
                 self.mtime = os.stat(output_file).st_mtime
-        elif self.config.has_option("Simulation", "Error_file"):
-            error_file = self.config.get("Simulation", "Error_file")
+        elif "Error_file" in self.config:
+            error_file = self.config["Error_file"]
             if os.path.isfile(error_file):
                 self.mtime = os.stat(error_file).st_mtime
 
         # Get the starting time of the simulation
-        if self.config.has_option("Simulation", "Timestamp_started"):
-            self.ctime = self.config.getfloat("Simulation", "Timestamp_started")
+        if "Timestamp_started" in self.config:
+            self.ctime = self.config["Timestamp_started"]
 
         # Determine whether the simulation is running using the process ID
         if os.path.isfile(".process.pid"):
@@ -426,9 +431,9 @@ class Simulation(ABC):
                     # It is running. Check if stalled.
                     # The default value is large to prevent a slow simulation to be mistakenly killed
                     stall_time = 6.0e6  # after 6.e6 seconds if the code doesn't advance, it is considered stalled
-                    if self.config.has_option("Simulation", "Stall_time"):
+                    if "Stall_time" in self.config:
                         # Allow overriding the stall time using the per-simulation config file
-                        stall_time = self.config.getfloat("Simulation", "Stall_time")
+                        stall_time = self.config["Stall_time"]
                     if time.time() - self.mtime > stall_time:
                         self.status = Simulation.STATUS_STALL
                         if self.logger is not None:
@@ -529,8 +534,8 @@ class Simulation(ABC):
         # Try to get the restartable checkpoint file name from the config file
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
-        if self.config.has_option("Simulation", "Restart_file"):
-            restart_fn = self.config.get("Simulation", "Restart_file")
+        if "Restart_file" in self.config:
+            restart_fn = self.config["Restart_file"]
             ts = (
                 time.time()
             )  # get the timestamp as part of the backup restart file name
@@ -572,10 +577,12 @@ class Simulation(ABC):
         case, this method does nothing but just return 1.
         """
         if self.mode == "interactive":
-            confirm = utilities.get_input(
+            confirm = utilities.get_input(utilities.utilities.highlighted_text(
                 "Are you sure you would like to delete the instance "
-                "#%d and its sub-instances? [Y/N] " % self.id
-            ).lower()
+                "#%d and its sub-instances? [Y/N] " % self.id,
+                color='cyan',
+                bold=False
+            )).lower()
             if confirm != "y":
                 return 1
         else:
@@ -593,17 +600,21 @@ class Simulation(ABC):
         :return: Return 0 if succeed, -1 if failed.
         """
         if shell_command is None:
-            shell_command = utilities.get_input("CMD>> ")
-        sys.stdout.write(
+            shell_command = utilities.get_input(utilities.highlighted_text("CMD>> ", color='green', bold=True))
+        sys.stdout.write(utilities.highlighted_text(
             "========== Command on #%d ==> %s (PWD=%s) ==========\n"
-            % (self.id, self.full_dir, self.full_dir)
+            % (self.id, self.full_dir, self.full_dir),
+            color='cyan',
+            bold=True)
         )
         original_dir = os.getcwd()
         os.chdir(self.full_dir)
         os.system(shell_command)
-        sys.stdout.write(
+        sys.stdout.write(utilities.highlighted_text(
             "========== [DONE] Command on #%d ==> %s (PWD=%s) ==========\n"
-            % (self.id, self.full_dir, self.full_dir)
+            % (self.id, self.full_dir, self.full_dir),
+            color='cyan',
+            bold=True)
         )
         os.chdir(original_dir)
         return 0
@@ -651,12 +662,11 @@ class Simulation(ABC):
 
         :return: Return the messages as a combined string if available. Otherwise return an empty string.
         """
-        if self.config.has_option("Simulation", "Output_file"):
-            output_file = self.config.get("Simulation", "Output_file")
-            sys.stdout.write(
-                "========== Diagnose for #%d ==> %s ==========\n"
-                % (self.id, self.full_dir)
-            )
+        if "Output_file" in self.config:
+            output_file = self.config["Output_file"]
+            print(utilities.highlighted_text("========== Diagnose for #%d ==> %s ==========\n" % (self.id, self.full_dir),
+                color='yellow',
+                bold=True))
             check_dir_name = self.full_dir
             original_dir = os.getcwd()
             os.chdir(check_dir_name)

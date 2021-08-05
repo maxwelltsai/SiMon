@@ -11,7 +11,9 @@ import numpy as np
 import configparser as cp 
 import daemon 
 from daemon import pidfile
+from daemonize import Daemonize
 from SiMon import utilities
+from SiMon import config 
 from SiMon.simulation_container import SimulationContainer
 from SiMon.visualization import progress_graph
 from SiMon.priority_scheduler import PriorityScheduler 
@@ -38,6 +40,7 @@ class SiMon(object):
         # Only needed in interactive mode
         conf_path = os.path.join(cwd, config_file)
         self.config = utilities.parse_config_file(os.path.join(cwd, config_file), section='SiMon')
+        config.current_config = self.config
 
         if self.config is None:
             print(
@@ -100,14 +103,26 @@ class SiMon(object):
         self.logger = logger
         self.max_concurrent_jobs = 2
 
-        # container for all simulations
-        self.simulations = SimulationContainer(root_dir=self.cwd)
-        self.scheduler = PriorityScheduler(self.simulations, self.logger, self.config)
+        self.simulations = None
+        self.scheduler = None 
+
+        self.__inited = False 
 
         os.chdir(cwd)
 
 
+    def initialize(self):
+        if not self.__inited:
+            # create a logger 
+            self.logger=utilities.get_logger(log_dir=self.cwd, log_file='SiMon_daemon.log')
 
+            # create a container for all simulations
+            self.simulations = SimulationContainer(root_dir=self.cwd)
+
+            # create a scheduler 
+            self.scheduler = PriorityScheduler(self.simulations, self.logger, self.config)
+        
+            self.__inited = True 
 
 
 
@@ -254,6 +269,9 @@ class SiMon(object):
         """
         The entry point of this script if it is run with the daemon.
         """
+        if not self.__inited:
+            self.initialize()
+            
         os.chdir(self.cwd)
         self.simulations.build_simulation_tree()
         while True:
@@ -261,8 +279,8 @@ class SiMon(object):
             self.scheduler.schedule()
             sys.stdout.flush()
             sys.stderr.flush()
-            if "daemon_sleep_time" in self.config:
-                time.sleep(self.config.getfloat("daemon_sleep_time"))
+            if "Daemon_sleep_time" in self.config:
+                time.sleep(self.config["Daemon_sleep_time"])
             else:
                 time.sleep(180)
 
@@ -272,6 +290,9 @@ class SiMon(object):
         terminal, and control the simulations accordingly.
         :return:
         """
+        if not self.__inited:
+            self.initialize()
+
         os.chdir(self.cwd)
         print(self.simulations)
         choice = ""
@@ -289,23 +310,24 @@ class SiMon(object):
         if necessary.
         :return:
         """
+        print('Working dir = ', working_dir)
         app = SiMon(
-            logger=utilities.get_logger(),
+            logger=None,
             pidfile=os.path.join(working_dir, "SiMon_daemon.pid"),
             stdout=os.path.join(working_dir, "SiMon.out.txt"),
             stderr=os.path.join(working_dir, "SiMon.err.txt"),
             cwd=working_dir,
             mode="daemon",
-        )
-        print('Starting daemon mode...')
+        ).run()
 
         # initialize the daemon runner
-        # daemon = Daemonize(app='SiMon', pid=app.pidfile_path, action=app.run, logger=utilities.get_logger())
+        # logger=utilities.get_logger(log_dir=app.cwd, log_file='SiMon_daemon.log')
+        # daemon = Daemonize(app='SiMon', pid=os.path.join(app.cwd, app.pidfile_path), action=app.run, logger=logger)
         # daemon.start()
 
         # with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr):
-        with daemon.DaemonContext(pidfile=pidfile.TimeoutPIDLockFile(os.path.join(working_dir, "SiMon_daemon.pid"))):
-            app.run()
+        # with daemon.DaemonContext(pidfile=pidfile.TimeoutPIDLockFile(os.path.join(working_dir, "SiMon_daemon.pid"))):
+            # app.run()
 
 
 def main():
@@ -336,9 +358,10 @@ def main():
                     except (ValueError, OSError):
                         pass
             # The python-daemon library will handle the start/stop/restart arguments by itself
+            print('Starting daemon mode...')
             SiMon.daemon_mode(os.getcwd())
         elif sys.argv[1] in ["interactive", "i", "-i"]:
-            s = SiMon()
+            s = SiMon(logger=utilities.get_logger())
             s.interactive_mode()
         else:
             print(sys.argv[1])

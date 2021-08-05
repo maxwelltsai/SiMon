@@ -4,36 +4,32 @@ Initial condition (IC) generator.
 import os
 import sys
 
-try:
-    import configparser as cp  # Python 3 only
-except ImportError:
-    import ConfigParser as cp  # Python 2 only
-
+from SiMon import utilities
 
 class InitialConditionGenerator(object):
 
     config_file_template = """# Per-simulation config file for SiMon
 [Simulation]
 # The name of the simulation code
-Code_name = %s
+Code_name = "%s"
 
 # The file name of the initial condition input file (for stdin)
-Input_file = %s
+Input_file = "%s"
 
 # The file name of the simulation log output (for stdout)
-Output_file = %s
+Output_file = "%s"
 
 # The file name of the simulation error output (for stderr)
-Error_file = %s
+Error_file = "%s"
 
 # The name of the file used to restart the simulation
-Restart_file = %s
+Restart_file = "%s"
 
 # The timestamp indicating the starting time of the simulation
-Timestamp_started = %s
+Timestamp_started = %f
 
 # The timestamp indicating the last time output files are updated
-Timestamp_last_updated = %s
+Timestamp_last_updated = %f
 
 # The time (in second) beyond which a simulation is considered as stalled
 Stall_time = %d
@@ -51,66 +47,65 @@ PID = %d
 Niceness = %d
 
 # The shell command to start the simulation
-Start_command: %s
+Start_command = "%s"
 
 # The shall command to restart the simulation
-Restart_command: %s
+Restart_command = "%s"
 
 # The shall command to stop the simulation
-Stop_command: %s
+Stop_command = "%s"
 
 # The maximum number of times a simulation will be restarted (a simulation is marked as ERROR when exceeding this limit)
-Max_restarts: %d
+Max_restarts = %d
     """
 
     def __init__(self, conf_file):
-        self.global_conf_file = conf_file  # the path of the global SiMon.conf
         self.config_file_per_sim = "SiMon.conf"  # the per-simulation config file name
-        self.config = None  # the parsed global config instance
-        self.sim_data_dir = None  # simulation data dir
-        self.max_restarts = 5  # maximum attempts a sim will be restarted, beyond which a sim is considered error
-        self.stall_time = 6.0e6  # Stall time
+        self.config = utilities.parse_config_file(conf_file)  # the parsed global config instance
+        # self.sim_data_dir = None  # simulation data dir
+        # self.max_restarts = 5  # maximum attempts a sim will be restarted, beyond which a sim is considered error
+        # self.stall_time = 6.0e6  # Stall time
 
-    def parse_config_file(self):
-        print(self.global_conf_file)
-        conf_fn = self.global_conf_file
-        conf = cp.ConfigParser()
-        if os.path.isfile(conf_fn):
-            conf.read(conf_fn)
-            self.config = conf
-            if self.config.has_option("SiMon", "Root_dir"):
-                self.sim_data_dir = self.config.get("SiMon", "Root_dir")
-                # check whether the directory exist
-                if not os.path.isdir(self.sim_data_dir):
-                    print(
-                        "Simulation data directory %s does not exist. Making the dir..."
-                        % self.sim_data_dir
-                    )
-                    try:
-                        os.makedirs(self.sim_data_dir)
-                        print("Simulation data directory created successfully.")
-                    except IOError as err:
-                        print(
-                            "Unable to create the simulation data directory: %s" % err
-                        )
-                        print("Exiting...")
-                        sys.exit(-1)
-            else:
-                print(
-                    "Simulation root directory cannot be found in SiMon.conf. Existing..."
-                )
-                sys.exit(-1)
-            if self.config.has_option("SiMon", "Max_restarts"):
-                self.max_restarts = self.config.getint("SiMon", "Max_restarts")
-            if self.config.has_option("SiMon", "Stall_time"):
-                self.stall_time = self.config.getfloat("SiMon", "Stall_time")
+    # def parse_config_file(self):
+    #     print(self.global_conf_file)
+    #     conf_fn = self.global_conf_file
+    #     conf = cp.ConfigParser()
+    #     if os.path.isfile(conf_fn):
+    #         conf.read(conf_fn)
+    #         self.config = conf
+    #         if self.config.has_option("SiMon", "Root_dir"):
+    #             self.sim_data_dir = self.config.get("SiMon", "Root_dir")
+    #             # check whether the directory exist
+    #             if not os.path.isdir(self.sim_data_dir):
+    #                 print(
+    #                     "Simulation data directory %s does not exist. Making the dir..."
+    #                     % self.sim_data_dir
+    #                 )
+    #                 try:
+    #                     os.makedirs(self.sim_data_dir)
+    #                     print("Simulation data directory created successfully.")
+    #                 except IOError as err:
+    #                     print(
+    #                         "Unable to create the simulation data directory: %s" % err
+    #                     )
+    #                     print("Exiting...")
+    #                     sys.exit(-1)
+    #         else:
+    #             print(
+    #                 "Simulation root directory cannot be found in SiMon.conf. Existing..."
+    #             )
+    #             sys.exit(-1)
+    #         if self.config.has_option("SiMon", "Max_restarts"):
+    #             self.max_restarts = self.config.getint("SiMon", "Max_restarts")
+    #         if self.config.has_option("SiMon", "Stall_time"):
+    #             self.stall_time = self.config.getfloat("SiMon", "Stall_time")
 
-        else:
-            print(
-                "Global config file %s cannot be found. Existing..."
-                % self.global_conf_file
-            )
-            sys.exit(-1)
+    #     else:
+    #         print(
+    #             "Global config file %s cannot be found. Existing..."
+    #             % self.global_conf_file
+    #         )
+    #         sys.exit(-1)
 
     def generate_simulation_ic(
         self,
@@ -150,16 +145,16 @@ Max_restarts: %d
         :return: return 0 if succeed, -1 if failed.
         """
         if max_restarts is None:
-            max_restarts = self.max_restarts
+            max_restarts = self.config['SiMon']['Max_restarts']
         if t_stall is None:
-            t_stall = self.stall_time
-        if not os.path.isdir(os.path.join(self.sim_data_dir, output_dir)):
+            t_stall = self.config['SiMon']['Stall_time']
+        if not os.path.isdir(os.path.join(self.config['SiMon']['Root_dir'], output_dir)):
             print(
-                "Creating directory: %s" % os.path.join(self.sim_data_dir, output_dir)
+                "Creating directory: %s" % os.path.join(self.config['SiMon']['Root_dir'], output_dir)
             )
-            os.makedirs(os.path.join(self.sim_data_dir, output_dir))
+            os.makedirs(os.path.join(self.config['SiMon']['Root_dir'], output_dir))
         conf_file = open(
-            os.path.join(self.sim_data_dir, output_dir, self.config_file_per_sim), "w"
+            os.path.join(self.config['SiMon']['Root_dir'], output_dir, self.config_file_per_sim), "w"
         )
         conf_file.write(
             InitialConditionGenerator.config_file_template

@@ -41,12 +41,13 @@ class SimulationContainer(object):
 
                     # Try to determine the simulation code type by reading the config file
                     sim_config = utilities.parse_config_file(
-                        os.path.join(fullpath, "SiMon.conf")
+                        os.path.join(fullpath, "SiMon.conf"),
+                        section='Simulation'
                     )
                     sim_inst = None
                     if sim_config is not None:
                         try:
-                            code_name = sim_config.get("Simulation", "Code_name")
+                            code_name = sim_config["Code_name"]
                             if code_name in self.module_dict:
                                 sim_inst_mod = __import__(self.module_dict[code_name])
                                 sim_inst = getattr(sim_inst_mod, code_name)(
