@@ -39,7 +39,6 @@ class PriorityScheduler(Scheduler):
                 and self.container.sim_inst_dict[ind].id > 0
             ):
                 schedule_list.append(self.container.sim_inst_dict[ind])
-                print(self.container.sim_inst_dict[ind].name)
 
         for sim in schedule_list:
             if sim.id == 0:  # the root group, skip
@@ -54,7 +53,7 @@ class PriorityScheduler(Scheduler):
             elif sim.status == Simulation.STATUS_STOP and sim.level == 1:
                 self.logger.warning("STOP detected: " + sim.fulldir)
                 # check if there is available slot to restart the simulation
-                if concurrent_jobs < int(self.config['max_concurrent_jobs']) and sim.level == 1:
+                if concurrent_jobs < int(self.config['Max_concurrent_jobs']) and sim.level == 1:
                     # search only top level instance to find the restart candidate
                     # build restart path
                     current_inst = sim
@@ -71,11 +70,11 @@ class PriorityScheduler(Scheduler):
                     concurrent_jobs += 1
             elif sim.status == Simulation.STATUS_NEW:
                 # check if there is available slot to start the simulation
-                if concurrent_jobs < int(self.config['max_concurrent_jobs']):
+                if concurrent_jobs < int(self.config['Max_concurrent_jobs']):
                     # Start new run
                     sim.sim_start()
                     concurrent_jobs += 1
         self.logger.info(
             "SiMon routine checking completed. Machine load: %d/%d"
-            % (concurrent_jobs, int(self.config['max_concurrent_jobs']))
+            % (concurrent_jobs, int(self.config['Max_concurrent_jobs']))
         )

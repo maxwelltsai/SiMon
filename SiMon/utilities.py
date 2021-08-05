@@ -6,8 +6,9 @@ import sys
 import os 
 import glob 
 import logging 
+import toml 
 import configparser as cp 
-from SiMon.config import DEFAULT_CONFIG as config 
+from SiMon import config
 
 config_file_template = """# Global config file for SiMon
 [SiMon]
@@ -31,7 +32,6 @@ Log_level: INFO
 Stall_time: 7200
 """
 
-__logger = None 
 
 def get_simon_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -161,9 +161,10 @@ def parse_config_file(config_file, section=None):
     :return: return 0 if succeed, -1 if failed (file not exist, and cannot be created). If the file does not exist
     but a new file with default values is created, the method returns 1.
     """
-    conf = cp.ConfigParser()
+    # conf = cp.ConfigParser()
     if os.path.isfile(config_file):
-        conf.read(config_file)
+        # conf.read(config_file)
+        conf = toml.load(config_file)
         if section is not None:
             if section in conf:
                 return conf[section]
@@ -173,6 +174,14 @@ def parse_config_file(config_file, section=None):
             return conf
     else:
         raise ValueError('Config file %s does not exist.' % (config_file))
+
+def update_config_file(config_file, config_dict, section=None):
+    with open(config_file, 'w') as f:
+        if section is None:
+            toml.dump(config_dict, f)
+        else:
+            config_dict = {section: config_dict}
+            toml.dump(config_dict, f)
 
 def print_help():
     print("Usage: python simon.py [start|stop|interactive|help]")
@@ -240,33 +249,36 @@ def register_simon_modules(module_dir, user_shell_dir, module_pattern='module_*.
     return mod_dict
 
 def get_logger(log_level='INFO', log_dir=None, log_file='SiMon.log'):    
-    if config['logger'] is not None:
-        return config['logger']
+    if config.current_config is not None:
+        if 'logger' in config.current_config:
+            return config.current_config['logger']
+
+    logger = logging.getLogger("DaemonLog")
+    if log_level == "DEBUG":
+        logger.setLevel(logging.DEBUG)
+    if log_level == "INFO":
+        logger.setLevel(logging.INFO)
+    elif log_level == "WARNING":
+        logger.setLevel(logging.WARNING)
+    elif log_level == "ERROR":
+        logger.setLevel(logging.ERROR)
+    elif log_level == "CRITICAL":
+        logger.setLevel(logging.CRITICAL)
     else:
-        logger = logging.getLogger("DaemonLog")
-        if log_level == "INFO":
-            logger.setLevel(logging.INFO)
-        elif log_level == "WARNING":
-            logger.setLevel(logging.WARNING)
-        elif log_level == "ERROR":
-            logger.setLevel(logging.ERROR)
-        elif log_level == "CRITICAL":
-            logger.setLevel(logging.CRITICAL)
-        else:
-            logger.setLevel(logging.INFO)
-        formatter = logging.Formatter(
-            "%(asctime)s - [%(levelname)s] - %(name)s - %(message)s"
-        )
+        logger.setLevel(logging.INFO)
+    formatter = logging.Formatter(
+        "%(asctime)s - [%(levelname)s] - %(name)s - %(message)s"
+    )
 
-        
-        if log_file is None:
-            handler = logging.StreamHandler()
-        else:
-            if log_dir is None:
-                log_dir = os.getcwd()
-            handler = logging.FileHandler(os.path.join(log_dir, log_file))
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+    
+    if log_file is None:
+        handler = logging.StreamHandler()
+    else:
+        if log_dir is None:
+            log_dir = os.getcwd()
+        handler = logging.FileHandler(os.path.join(log_dir, log_file))
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
-        config['logger'] = logger 
-        return logger 
+    config.current_config['logger'] = logger 
+    return logger

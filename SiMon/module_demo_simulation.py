@@ -29,8 +29,8 @@ class DemoSimulation(Simulation):
         super(DemoSimulation, self).sim_get_model_time()
         orig_dir = os.getcwd()
         os.chdir(self.full_dir)
-        if self.config.has_option("Simulation", "Output_file"):
-            output_file = self.config.get("Simulation", "Output_file")
+        if "Output_file" in self.config:
+            output_file = self.config["Output_file"]
             regex = re.compile("\\d+")
             if os.path.isfile(output_file):
                 last_line = subprocess.check_output(["tail", "-1", output_file]).decode('utf-8')

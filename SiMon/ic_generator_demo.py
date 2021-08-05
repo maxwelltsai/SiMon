@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from SiMon.ic_generator import InitialConditionGenerator
+from SiMon import utilities
 
 
 def generate_ic(output_basedir=os.getcwd()):
@@ -21,7 +22,6 @@ def generate_ic(output_basedir=os.getcwd()):
 
     # IC generator
     ic = InitialConditionGenerator(conf_file="SiMon.conf")
-    ic.parse_config_file()
 
     # generate the IC parameter space in the loops
     for a in a_vec:
