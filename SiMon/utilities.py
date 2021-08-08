@@ -173,7 +173,8 @@ def parse_config_file(config_file, section=None):
         else:
             return conf
     else:
-        raise ValueError('Config file %s does not exist.' % (config_file))
+        # raise ValueError('Config file %s does not exist.' % (config_file))
+        return None 
 
 def update_config_file(config_file, config_dict, section=None):
     with open(config_file, 'w') as f:
