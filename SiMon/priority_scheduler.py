@@ -9,31 +9,35 @@ import numpy as np
 
 class PriorityScheduler(Scheduler):
 
-    def __init__(self, container: SimulationContainer = None, logger: Logger = None, config: dict = None) -> None:
-        super().__init__(container, logger, config)
+    def __init__(self, container: SimulationContainer = None, logger: Logger = None, config: dict = None, callbacks: list = None ) -> None:
+        super().__init__(container, logger, config, callbacks)
     
     def schedule(self):
         """
         Schedule the simulations based on their priorities.
         """
+        super().schedule()
 
         self.container.build_simulation_tree()
         schedule_list = []
         # Sort jobs according to priority (niceness)
         sim_niceness_vec = []
+        sim_id_vec = []
 
         # check how many simulations are running
         concurrent_jobs = 0
         for i in self.container.sim_inst_dict.keys():
             inst = self.container.sim_inst_dict[i]
             sim_niceness_vec.append(inst.niceness)
+            sim_id_vec.append(inst.id)
             inst.sim_get_status()  # update its status
             # test if the process is running
             if inst.status == Simulation.STATUS_RUN and inst.cid == -1:
                 concurrent_jobs += 1
 
         index_niceness_sorted = np.argsort(sim_niceness_vec)
-        for ind in index_niceness_sorted:
+        for _, i in enumerate(index_niceness_sorted):
+            ind = sim_id_vec[i]
             if (
                 self.container.sim_inst_dict[ind].status != Simulation.STATUS_DONE
                 and self.container.sim_inst_dict[ind].id > 0

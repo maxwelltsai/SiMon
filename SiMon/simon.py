@@ -8,15 +8,14 @@ import glob
 
 import numpy as np
 
-import configparser as cp 
 import daemon 
 from daemon import pidfile
 from daemonize import Daemonize
 from SiMon import utilities
 from SiMon import config 
 from SiMon.simulation_container import SimulationContainer
-from SiMon.visualization import progress_graph
-from SiMon.priority_scheduler import PriorityScheduler 
+from SiMon.priority_scheduler import PriorityScheduler
+from SiMon.visualization import VisualizationCallback 
 
 
 
@@ -60,9 +59,9 @@ class SiMon(object):
                 )
             sys.exit(-1)
         else:
-            try:
-                cwd = self.config.get("Root_dir")
-            except cp.NoOptionError:
+            if "Root_dir" in self.config:
+                cwd = self.config["Root_dir"]
+            else:
                 print(
                     "Item Root_dir is missing in configuration file SiMon.conf. SiMon cannot start. Exiting..."
                 )
@@ -104,6 +103,7 @@ class SiMon(object):
         self.max_concurrent_jobs = 2
 
         self.simulations = None
+        self.callbacks = []
         self.scheduler = None 
 
         self.__inited = False 
@@ -119,8 +119,15 @@ class SiMon(object):
             # create a container for all simulations
             self.simulations = SimulationContainer(root_dir=self.cwd)
 
+            # load the callbacks
+            print(self.config)
+            if 'Visualization' in self.config:
+                if self.config['Visualization']['Enabled'] is True:
+                    self.callbacks.append(VisualizationCallback(container=self.simulations, 
+                                                                plot_dir=os.path.join(self.cwd, self.config['Visualization']['Dir'])))
+
             # create a scheduler 
-            self.scheduler = PriorityScheduler(self.simulations, self.logger, self.config)
+            self.scheduler = PriorityScheduler(self.simulations, self.logger, self.config, self.callbacks)
         
             self.__inited = True 
 

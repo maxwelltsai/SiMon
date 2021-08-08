@@ -60,6 +60,7 @@ class SimulationContainer(object):
                         except (cp.NoOptionError, cp.NoSectionError):
                             pass
                     else:
+                        # If there is no SiMon.conf file, then it is not considered as a valid SiMon simulation directory
                         continue
                     if sim_inst is None:
                         continue
