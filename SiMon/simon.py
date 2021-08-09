@@ -15,7 +15,8 @@ from SiMon import utilities
 from SiMon import config 
 from SiMon.simulation_container import SimulationContainer
 from SiMon.priority_scheduler import PriorityScheduler
-from SiMon.visualization import VisualizationCallback 
+from SiMon.visualization import VisualizationCallback
+from SiMon.dashboard.apps.dashboard_callback import DashboardCallback 
 
 
 
@@ -125,6 +126,12 @@ class SiMon(object):
                 if self.config['Visualization']['Enabled'] is True:
                     self.callbacks.append(VisualizationCallback(container=self.simulations, 
                                                                 plot_dir=os.path.join(self.cwd, self.config['Visualization']['Dir'])))
+
+            if 'Dashboard' in self.config:
+                print('1yy')
+                if self.config['Dashboard']['Enabled'] is True:
+                    print('2yy')
+                    self.callbacks.append(DashboardCallback(container=self.simulations))
 
             # create a scheduler 
             self.scheduler = PriorityScheduler(self.simulations, self.logger, self.config, self.callbacks)
