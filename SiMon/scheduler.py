@@ -21,4 +21,5 @@ class Scheduler(ABC):
     def schedule(self):
         if self.callbacks is not None:
             for cb in self.callbacks:
+                print('Executing callback %s' % cb)
                 cb.run()

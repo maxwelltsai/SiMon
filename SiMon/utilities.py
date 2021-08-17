@@ -4,6 +4,7 @@ Implementation of utilities used by SiMon globally.
 
 import sys
 import os 
+import shutil
 import glob 
 import logging 
 import toml 
@@ -141,10 +142,13 @@ def get_input(prompt_msg):
     return input(prompt_msg)
 
 def generate_conf():
+    print('source dir', get_simon_dir())
     try:
-        target = open("SiMon.conf", "w")
-        target.write(config_file_template)
-        target.close()
+        with open(os.path.join(get_simon_dir(), 'SiMon.conf'), 'r') as conf:
+            lines = conf.readlines()
+            with open("SiMon.conf", "w") as target:
+                for line in lines:
+                    target.write(line)
     except IOError:
         print("Unexpected error:", sys.exc_info()[0])
 
